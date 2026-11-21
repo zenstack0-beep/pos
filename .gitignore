@@ -19,6 +19,7 @@ The-Smart-POS-Client.zip
 
 # Runtime data and logs
 /data.json
+/tenant-backups/
 *.log
 
 # Generated client release packages
