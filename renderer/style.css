@@ -82,7 +82,7 @@ label.f.ck{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:va
 #licenseNotice:empty{display:none}#licenseNotice:not(:empty){position:fixed;inset:0;z-index:10001;display:grid;place-items:center;padding:20px;background:#10182866;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}.payment-due-card{width:min(540px,100%);max-height:min(85vh,700px);overflow:auto;padding:26px 30px;border-color:color-mix(in srgb,var(--acc) 38%,var(--bd));box-shadow:0 24px 80px #0005;line-height:1.55}.payment-due-card h3{margin:0 0 12px;font-size:22px;color:var(--bad)}.payment-due-card p{margin:10px 0}.payment-due-card p:first-of-type b{font-size:18px}.payment-due-open{overflow:hidden}
 .login .card{width:min(380px,100%);text-align:center}.login img{width:120px;height:120px;border-radius:50%;margin-bottom:8px}.login input{width:100%;margin:6px 0}
 .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}.tabs .btn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-@media(max-width:1100px){.pos{grid-template-columns:minmax(0,1fr);height:auto}.shell{grid-template-columns:70px minmax(0,1fr)}.nav a span,.brand div,.me{display:none}}
+@media(max-width:1100px){.pos{grid-template-columns:minmax(0,1fr);height:auto}.shell{grid-template-columns:200px minmax(0,1fr)}.brand div{min-width:0;overflow-wrap:anywhere}.brand b{font-size:14px}.nav a{padding:9px 10px}}
 @media(min-width:1101px) and (max-width:1450px){.pos{grid-template-columns:minmax(0,1fr) minmax(340px,38vw)}}
 
 /* Phone and narrow tablet layout */
