@@ -30,7 +30,7 @@ Open this folder in VS Code, then in the terminal: `npm install` (once) and `npm
 Shop name, address, phone, currency, tax, receipt text, colours, prefixes: **Settings** page (no code needed).
 Default values for a fresh database are in `defaults()` in `core.js`.
 
-The **Invoice template** page includes 60 built-in A4 designs and the existing business-color design. The saved business design is used for new sale invoices, reprints, invoice documents, and new quotations. Existing saved documents keep their saved design.
+The **Invoice template** page includes 64 individually named A4 designs with distinct masthead, billing-information, and item-table arrangements, plus the existing business-color design. Owners and managers can search the gallery, load a choice into the live preview, and save it. The saved business design is used for new sale invoices, reprints, invoice documents, and new quotations. Existing saved documents keep their saved design.
 
 ## Where is my data?
 Desktop app: `data.json` in the app data folder (Settings page shows the exact path):

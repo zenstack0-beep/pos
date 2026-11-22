@@ -460,9 +460,44 @@ const quoteTotal = q => r2((q.items || []).reduce((sum, i) => sum + num(i.qty) *
 const quoteOriginalTotal = q => r2((q.items || []).reduce((sum, i) => sum + num(i.qty) * num(i.regularPrice ?? i.price), 0));
 const quoteDiscountTotal = q => r2(quoteOriginalTotal(q) - quoteTotal(q));
 
-/* Built-in business document designs. The 10 layout families and 6 palettes make
-   60 offline-ready choices; the existing business-color design remains available. */
-const IV_TEMPLATE_LAYOUTS = [
+/* The gallery has 64 individually named layouts. Each one gets a unique
+   masthead + party/meta arrangement + table treatment; the accent is an
+   additional choice, not the only thing that changes between cards. */
+const IV_HEADER_STYLES = [
+  'Full-bleed color masthead', 'Editorial white masthead', 'Centered brand masthead', 'Left-rail letterhead',
+  'Split-tone banner', 'Top-band title block', 'Double-rule formal header', 'Soft radial signature header'
+];
+const IV_INFO_STYLES = [
+  'Three-column company, client and reference details', 'Side-by-side company and client panels with a reference strip',
+  'Reference strip above the company and client panels', 'Reversed client-first panels with a full-width reference strip'
+];
+const IV_TABLE_STYLES = ['Solid color table grid', 'Open ledger table with ruled rows'];
+const IV_TEMPLATE_PALETTES = [
+  { id: 'terracotta', name: 'Terracotta', color: '#a9432e' }, { id: 'indigo', name: 'Indigo', color: '#344c8c' },
+  { id: 'pine', name: 'Pine', color: '#28634c' }, { id: 'plum', name: 'Plum', color: '#704276' },
+  { id: 'cobalt', name: 'Cobalt', color: '#176b9a' }, { id: 'marigold', name: 'Marigold', color: '#a76d12' },
+  { id: 'wine', name: 'Wine', color: '#843b4e' }, { id: 'teal', name: 'Teal', color: '#16756e' },
+  { id: 'graphite', name: 'Graphite', color: '#46515c' }, { id: 'brick', name: 'Brick', color: '#a34236' },
+  { id: 'moss', name: 'Moss', color: '#68733b' }, { id: 'ocean', name: 'Ocean', color: '#28608c' },
+  { id: 'copper', name: 'Copper', color: '#98603b' }, { id: 'berry', name: 'Berry', color: '#8a456d' },
+  { id: 'evergreen', name: 'Evergreen', color: '#27604c' }, { id: 'midnight', name: 'Midnight', color: '#344158' }
+];
+const IV_TEMPLATE_NAME_A = ['Atlas', 'Meridian', 'Harbor', 'Summit', 'Keystone', 'Northstar', 'Foundry', 'Monogram'];
+const IV_TEMPLATE_NAME_B = ['Ledger', 'Folio', 'Column', 'Contour', 'Signal', 'Frame', 'Crest', 'Index'];
+const IV_TEMPLATES = Array.from({ length: 64 }, (_, i) => {
+  const n = String(i + 1).padStart(2, '0'), header = i % 8, info = Math.floor(i / 8) % 4, table = Math.floor(i / 32);
+  const palette = IV_TEMPLATE_PALETTES[(i * 5) % IV_TEMPLATE_PALETTES.length];
+  return {
+    id: `folio-${n}`, layout: `folio-${n}`, header, info, table, total: (i * 3) % 4,
+    palette: palette.id, paletteName: palette.name, color: palette.color,
+    name: `${IV_TEMPLATE_NAME_A[Math.floor(i / 8)]} ${IV_TEMPLATE_NAME_B[i % 8]}`,
+    description: `${IV_HEADER_STYLES[header]} · ${IV_INFO_STYLES[info]} · ${IV_TABLE_STYLES[table]} · ${palette.name}`
+  };
+});
+/* Keep the former ids resolvable so saved documents and existing shops retain
+   their exact layout when opened. These archived choices are not repeated in
+   the new gallery. */
+const IV_ARCHIVE_LAYOUTS = [
   { id: 'classic', name: 'Classic', description: 'Familiar angled header and balanced sections' },
   { id: 'minimal', name: 'Minimal', description: 'White space, clean rules and quiet headings' },
   { id: 'executive', name: 'Executive', description: 'Dark full-width header with a formal finish' },
@@ -474,21 +509,18 @@ const IV_TEMPLATE_LAYOUTS = [
   { id: 'compact', name: 'Compact', description: 'Tighter spacing for dense item lists' },
   { id: 'soft', name: 'Soft', description: 'Rounded panels and gentle shaded sections' }
 ];
-const IV_TEMPLATE_PALETTES = [
-  { id: 'amber', name: 'Amber', color: '#e66b24' },
-  { id: 'ocean', name: 'Ocean', color: '#2563a6' },
-  { id: 'forest', name: 'Forest', color: '#25805b' },
-  { id: 'plum', name: 'Plum', color: '#7651a5' },
-  { id: 'ruby', name: 'Ruby', color: '#ad4055' },
-  { id: 'slate', name: 'Slate', color: '#46566b' }
+const IV_ARCHIVE_PALETTES = [
+  { id: 'amber', name: 'Amber', color: '#e66b24' }, { id: 'ocean', name: 'Ocean', color: '#2563a6' },
+  { id: 'forest', name: 'Forest', color: '#25805b' }, { id: 'plum', name: 'Plum', color: '#7651a5' },
+  { id: 'ruby', name: 'Ruby', color: '#ad4055' }, { id: 'slate', name: 'Slate', color: '#46566b' }
 ];
-const IV_TEMPLATES = IV_TEMPLATE_LAYOUTS.flatMap(layout => IV_TEMPLATE_PALETTES.map(palette => ({
-  id: `${layout.id}-${palette.id}`, layout: layout.id, layoutName: layout.name,
-  palette: palette.id, paletteName: palette.name, color: palette.color,
-  name: `${layout.name} · ${palette.name}`, description: layout.description
+const IV_ARCHIVE_TEMPLATES = IV_ARCHIVE_LAYOUTS.flatMap(layout => IV_ARCHIVE_PALETTES.map((palette, i) => ({
+  id: `${layout.id}-${['amber', 'ocean', 'forest', 'plum', 'ruby', 'slate'][i]}`, layout: layout.id,
+  layoutName: layout.name, palette: palette.id, paletteName: palette.name, color: palette.color,
+  name: `${layout.name} · ${['Amber', 'Ocean', 'Forest', 'Plum', 'Ruby', 'Slate'][i]}`, description: layout.description
 })));
 const IV_LEGACY_TEMPLATE = { id: 'legacy-current', name: 'Current business colors', description: 'Keeps the existing layout and your POS accent color.', layout: 'classic', color: '' };
-const ivTemplate = id => IV_TEMPLATES.find(t => t.id === id) || null;
+const ivTemplate = id => IV_TEMPLATES.find(t => t.id === id) || IV_ARCHIVE_TEMPLATES.find(t => t.id === id) || null;
 
 const qm = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const qdNl = v => esc(v).replace(/\n/g, '<br>');
@@ -639,6 +671,148 @@ const QD_CSS = `
 .qd[data-layout="soft"] .qd-it td{border-left:0;border-right:0}
 .qd[data-layout="soft"] .qd-co{border-right:0;border-left:3px solid var(--qd-accent);padding-left:10px}
 `;
+
+/* Distinct layout system for the 64 new gallery designs. The three layout
+   axes form 8 × 4 × 2 = 64 combinations; each preset also has its own accent,
+   totals treatment and named identity. */
+const IV_CATALOG_CSS = `
+.qd[data-head] .qd-hd>svg{display:none!important}
+.qd[data-head="0"] .qd-hd{background:var(--qd-accent-dark)}
+.qd[data-head="0"] .qd-ttl{left:auto;right:32px;top:64px;color:#fff;font-size:43px!important}
+.qd[data-head="0"] .qd-ttl:after{width:100%;background:var(--qd-accent-light)}
+.qd[data-head="0"] .qd-tag{left:auto;right:34px;color:var(--qd-accent-light)}
+.qd[data-head="0"] .qd-sub{left:auto;right:34px;color:#fff}
+.qd[data-head="0"] .qd-logot{color:#fff}
+.qd[data-head="1"] .qd-hd{background:linear-gradient(var(--qd-accent) 0 10px,#fff 10px)}
+.qd[data-head="1"] .qd-ttl{left:auto;right:32px;top:65px;color:var(--qd-accent-dark);font-size:42px!important}
+.qd[data-head="1"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-head="1"] .qd-tag{left:auto;right:34px;color:var(--qd-accent)}
+.qd[data-head="1"] .qd-sub{left:auto;right:34px;top:128px;color:#526173}
+.qd[data-head="2"] .qd-hd{background:linear-gradient(#fff 0 166px,var(--qd-accent) 166px)}
+.qd[data-head="2"] .qd-logo{left:202px!important;top:8px!important;width:390px!important;height:62px!important}
+.qd[data-head="2"] .qd-ttl{left:0;right:0;top:91px;text-align:center;color:var(--qd-accent-dark);font-size:39px!important}
+.qd[data-head="2"] .qd-ttl:after{width:240px;margin:8px auto 0;background:var(--qd-accent)}
+.qd[data-head="2"] .qd-tag{left:0;right:0;top:70px;text-align:center;color:var(--qd-accent)}
+.qd[data-head="2"] .qd-sub{left:0;right:0;top:150px;text-align:center;color:#526173}
+.qd[data-head="3"] .qd-hd{background:linear-gradient(90deg,var(--qd-accent) 0 15px,#fff 15px)}
+.qd[data-head="3"] .qd-logo{left:34px!important}
+.qd[data-head="3"] .qd-ttl{left:auto;right:32px;top:65px;color:var(--qd-accent-dark);font-size:42px!important}
+.qd[data-head="3"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-head="3"] .qd-tag{left:auto;right:34px;color:var(--qd-accent)}
+.qd[data-head="3"] .qd-sub{left:auto;right:34px;top:128px;color:#526173}
+.qd[data-head="4"] .qd-hd{background:linear-gradient(90deg,#fff 0 52%,var(--qd-accent-dark) 52%)}
+.qd[data-head="4"] .qd-ttl{left:auto;right:30px;top:65px;color:#fff;font-size:40px!important}
+.qd[data-head="4"] .qd-ttl:after{width:100%;background:var(--qd-accent-light)}
+.qd[data-head="4"] .qd-tag{left:auto;right:32px;color:var(--qd-accent-light)}
+.qd[data-head="4"] .qd-sub{left:auto;right:32px;top:128px;color:#fff}
+.qd[data-head="4"] .qd-logot{color:var(--qd-accent-dark)}
+.qd[data-head="5"] .qd-hd{background:linear-gradient(var(--qd-accent-dark) 0 58px,#fff 58px)}
+.qd[data-head="5"] .qd-logo{left:30px!important;top:70px!important;width:240px!important;height:83px!important}
+.qd[data-head="5"] .qd-ttl{left:30px;right:auto;top:8px;color:#fff;font-size:36px!important}
+.qd[data-head="5"] .qd-ttl:after{display:none}
+.qd[data-head="5"] .qd-tag{left:auto;right:30px;top:72px;color:var(--qd-accent)}
+.qd[data-head="5"] .qd-sub{left:auto;right:30px;top:132px;color:#526173}
+.qd[data-head="6"] .qd-hd{background:#fff;border-top:4px double var(--qd-accent);border-bottom:4px double var(--qd-accent)}
+.qd[data-head="6"] .qd-logo{left:30px!important;top:28px!important;width:215px!important;height:105px!important}
+.qd[data-head="6"] .qd-ttl{left:auto;right:30px;top:67px;color:var(--qd-accent-dark);font-family:Georgia,serif;font-size:40px!important;letter-spacing:2px}
+.qd[data-head="6"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-head="6"] .qd-tag{left:auto;right:32px;top:30px;color:var(--qd-accent-dark)}
+.qd[data-head="6"] .qd-sub{left:auto;right:32px;top:132px;color:#526173}
+.qd[data-head="7"] .qd-hd{background:radial-gradient(ellipse at 86% 40%,var(--qd-accent-light) 0 19%,transparent 19.5%),linear-gradient(90deg,#fff 0 70%,#f7f8fa 70%)}
+.qd[data-head="7"] .qd-hd:after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--qd-accent)}
+.qd[data-head="7"] .qd-ttl{left:auto;right:32px;top:67px;color:var(--qd-accent-dark);font-size:40px!important}
+.qd[data-head="7"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-head="7"] .qd-tag{left:auto;right:34px;color:var(--qd-accent)}
+.qd[data-head="7"] .qd-sub{left:auto;right:34px;top:130px;color:#526173}
+
+.qd[data-info="1"] .qd-info,.qd[data-info="3"] .qd-info{height:166px;padding:8px 26px 0;grid-template-columns:1fr 1fr;grid-template-rows:1fr 34px;gap:6px}
+.qd[data-info="1"] .qd-info{grid-template-areas:"co bt" "meta meta"}
+.qd[data-info="3"] .qd-info{grid-template-areas:"bt co" "meta meta"}
+.qd[data-info="1"] .qd-co,.qd[data-info="1"] .qd-bt,.qd[data-info="3"] .qd-co,.qd[data-info="3"] .qd-bt{border:1px solid #d8dee7;padding:6px 8px}
+.qd[data-info="1"] .qd-co,.qd[data-info="3"] .qd-co{grid-area:co}
+.qd[data-info="1"] .qd-bt,.qd[data-info="3"] .qd-bt{grid-area:bt}
+.qd[data-info="1"] .qd-meta,.qd[data-info="3"] .qd-meta{grid-area:meta}
+.qd[data-info="2"] .qd-info{height:166px;padding:7px 26px 0;grid-template-columns:1fr 1fr;grid-template-rows:34px 1fr;grid-template-areas:"meta meta" "co bt";gap:6px}
+.qd[data-info="2"] .qd-meta{grid-area:meta}
+.qd[data-info="2"] .qd-co{grid-area:co;border:0;border-right:1px solid #d8dee7;padding:4px 10px 0 0}
+.qd[data-info="2"] .qd-bt{grid-area:bt;padding:4px 0 0 10px}
+.qd[data-info="1"] .qd-meta,.qd[data-info="2"] .qd-meta,.qd[data-info="3"] .qd-meta{display:flex;align-self:stretch;position:static;width:auto;margin:0;border:0;gap:5px}
+.qd[data-info="1"] .qd-meta>div,.qd[data-info="2"] .qd-meta>div,.qd[data-info="3"] .qd-meta>div{display:grid;grid-template-columns:minmax(55px,40%) 1fr;flex:1;min-width:0;height:30px;border:1px solid #d8dee7;background:#f7f8fa;font-size:10px}
+.qd[data-info="1"] .qd-meta b,.qd[data-info="2"] .qd-meta b,.qd[data-info="3"] .qd-meta b{font-size:9px;letter-spacing:0}
+.qd[data-info="1"] .qd-meta span,.qd[data-info="2"] .qd-meta span,.qd[data-info="3"] .qd-meta span{padding:0 4px;font-size:10px}
+.qd[data-info="3"] .qd-co{text-align:right;border:0;border-left:2px solid var(--qd-accent);padding:4px 10px 0 0}
+.qd[data-info="3"] .qd-co .qd-ln{justify-content:flex-end}
+.qd[data-info="3"] .qd-co .qd-ln svg{order:2}
+
+.qd[data-table="0"] .qd-it th{background:var(--qd-accent-dark);border-right-color:var(--qd-accent)}
+.qd[data-table="0"] .qd-it td{background:#fff;border-color:#dfe4eb;height:48px}
+.qd[data-table="0"] .qd-it tbody tr:nth-child(even) td{background:var(--qd-accent-light)}
+.qd[data-table="1"] .qd-it{border-top:2px solid var(--qd-accent);border-bottom:2px solid var(--qd-accent)}
+.qd[data-table="1"] .qd-it th{background:#fff;color:var(--qd-accent-dark);height:38px;border:0;border-bottom:2px solid var(--qd-accent);text-align:left;padding-left:7px}
+.qd[data-table="1"] .qd-it td{background:#fff;border:0;border-bottom:1px solid #d7dce4;height:47px;padding:2px 7px}
+.qd[data-table="1"] .qd-it td.qd-d{padding-left:8px}
+.qd[data-table="1"] .qd-it tbody tr:nth-child(even) td{background:#f8f9fb}
+.qd[data-total="0"] .qd-tot{border:1px solid var(--qd-accent);background:#fff}
+.qd[data-total="0"] .qd-tot .qd-g{background:var(--qd-accent-dark)}
+.qd[data-total="1"] .qd-tot{border:0;border-top:3px solid var(--qd-accent);background:#f6f7f9}
+.qd[data-total="1"] .qd-tot .qd-r{border-bottom:1px dotted #b7bec8}
+.qd[data-total="1"] .qd-tot .qd-g{background:var(--qd-accent)}
+.qd[data-total="2"] .qd-tot{border:1px solid #d8dee7;border-radius:0;background:#fff}
+.qd[data-total="2"] .qd-tot .qd-r{height:38px;border-bottom:1px solid #e2e6ec}
+.qd[data-total="2"] .qd-tot .qd-g{background:#202a39;border-left:5px solid var(--qd-accent)}
+.qd[data-total="3"] .qd-tot{border:0;border-left:4px solid var(--qd-accent);background:var(--qd-accent-light)}
+.qd[data-total="3"] .qd-tot .qd-r{border-bottom:1px solid #fff}
+.qd[data-total="3"] .qd-tot .qd-g{background:var(--qd-accent-dark)}
+
+/* Small page mockups use the same three design axes as the printed page. */
+.iv-mini{--mini-accent:#46566b;--mini-dark:color-mix(in srgb,var(--mini-accent) 68%,#000);width:76px;height:90px;position:relative;background:#fff;color:#fff;overflow:hidden;box-shadow:0 2px 6px #0002;border:1px solid #d5d9df}
+.iv-mini-head{height:22px;background:var(--mini-accent);position:relative}
+.iv-mini-logo{position:absolute;left:5px;top:5px;width:25px;height:4px;background:#fff;opacity:.9;border-radius:1px}
+.iv-mini-title{position:absolute;right:5px;top:8px;width:24px;height:3px;background:#fff;border-radius:1px}
+.iv-mini-info{height:20px;margin:5px 5px 3px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px}
+.iv-mini-info i{display:block;background:#e9edf1;border-top:2px solid var(--mini-accent);height:14px}
+.iv-mini-table{margin:0 5px;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:5px;gap:1px}
+.iv-mini-table i{display:block;background:#e9edf1}
+.iv-mini-table i:first-child,.iv-mini-table i:nth-child(2){background:var(--mini-accent)}
+.iv-mini-bottom{position:absolute;left:5px;right:5px;bottom:5px;height:13px;display:flex;justify-content:space-between;align-items:end;gap:4px}
+.iv-mini-bottom i:first-child{width:27px;height:8px;background:#eef0f3}.iv-mini-bottom i:last-child{width:26px;height:12px;background:var(--mini-dark)}
+.iv-mini[data-head="0"] .iv-mini-head{height:30px;background:var(--mini-dark)}
+.iv-mini[data-head="0"] .iv-mini-title{top:15px}
+.iv-mini[data-head="1"] .iv-mini-head{height:22px;background:linear-gradient(var(--mini-accent) 0 4px,#fff 4px)}
+.iv-mini[data-head="1"] .iv-mini-logo,.iv-mini[data-head="1"] .iv-mini-title{background:var(--mini-dark)}
+.iv-mini[data-head="2"] .iv-mini-head{height:25px;background:linear-gradient(#fff 0 22px,var(--mini-accent) 22px)}
+.iv-mini[data-head="2"] .iv-mini-logo{left:25px;top:3px;width:26px;background:#d9dde3}
+.iv-mini[data-head="2"] .iv-mini-title{left:22px;right:auto;top:14px;width:32px;background:var(--mini-dark)}
+.iv-mini[data-head="3"] .iv-mini-head{background:linear-gradient(90deg,var(--mini-accent) 0 6px,#fff 6px)}
+.iv-mini[data-head="3"] .iv-mini-logo,.iv-mini[data-head="3"] .iv-mini-title{background:var(--mini-dark)}
+.iv-mini[data-head="4"] .iv-mini-head{background:linear-gradient(90deg,#fff 0 52%,var(--mini-dark) 52%)}
+.iv-mini[data-head="4"] .iv-mini-logo{background:var(--mini-dark)}
+.iv-mini[data-head="5"] .iv-mini-head{height:25px;background:linear-gradient(var(--mini-dark) 0 9px,#fff 9px)}
+.iv-mini[data-head="5"] .iv-mini-logo{top:15px;background:var(--mini-dark)}
+.iv-mini[data-head="5"] .iv-mini-title{left:5px;right:auto;top:3px}
+.iv-mini[data-head="6"] .iv-mini-head{height:27px;background:#fff;border-top:2px double var(--mini-accent);border-bottom:2px double var(--mini-accent)}
+.iv-mini[data-head="6"] .iv-mini-logo,.iv-mini[data-head="6"] .iv-mini-title{background:var(--mini-dark)}
+.iv-mini[data-head="7"] .iv-mini-head{background:radial-gradient(circle at 85% 45%,#dbe3ed 0 20%,transparent 21%),#fff;border-bottom:3px solid var(--mini-accent)}
+.iv-mini[data-head="7"] .iv-mini-logo,.iv-mini[data-head="7"] .iv-mini-title{background:var(--mini-dark)}
+.iv-mini[data-head="8"] .iv-mini-head{background:linear-gradient(120deg,#fff 0 42%,var(--mini-accent) 42%)}
+.iv-mini[data-head="8"] .iv-mini-logo{background:var(--mini-dark)}
+.iv-mini[data-head="8"] .iv-mini-title{background:#fff}
+.iv-mini[data-info="1"] .iv-mini-info,.iv-mini[data-info="3"] .iv-mini-info{grid-template-columns:1fr 1fr;grid-template-rows:8px 8px;height:18px}
+.iv-mini[data-info="1"] .iv-mini-info i:first-child,.iv-mini[data-info="3"] .iv-mini-info i:first-child{grid-column:1}
+.iv-mini[data-info="1"] .iv-mini-info i:nth-child(2),.iv-mini[data-info="3"] .iv-mini-info i:nth-child(2){grid-column:2}
+.iv-mini[data-info="1"] .iv-mini-info i:last-child,.iv-mini[data-info="3"] .iv-mini-info i:last-child{grid-column:1 / span 2}
+.iv-mini[data-info="2"] .iv-mini-info{grid-template-columns:1fr 1fr;grid-template-rows:7px 10px;height:19px}
+.iv-mini[data-info="2"] .iv-mini-info i:first-child{grid-column:1 / span 2;grid-row:1}
+.iv-mini[data-info="2"] .iv-mini-info i:nth-child(2){grid-column:1;grid-row:2}
+.iv-mini[data-info="2"] .iv-mini-info i:last-child{grid-column:2;grid-row:2}
+.iv-mini[data-table="1"] .iv-mini-table{grid-template-columns:1fr;grid-auto-rows:4px;border-top:1px solid var(--mini-accent)}
+.iv-mini[data-table="1"] .iv-mini-table i:first-child{display:none}
+.iv-mini[data-table="1"] .iv-mini-table i:nth-child(2){background:#e9edf1}
+.iv-mini[data-total="0"] .iv-mini-bottom i:last-child{background:var(--mini-accent)}
+.iv-mini[data-total="1"] .iv-mini-bottom i:last-child{height:7px;border-top:2px solid var(--mini-accent);background:#f1f2f4}
+.iv-mini[data-total="2"] .iv-mini-bottom i:last-child{background:#202a39;border-left:3px solid var(--mini-accent)}
+.iv-mini[data-total="3"] .iv-mini-bottom i:last-child{background:var(--mini-dark);border-left:3px solid var(--mini-accent)}
+`;
 const qdFontCss = () => {
   const f = window.QFONTS; if (!f) return '';
   const ff = (name, w, data) => data ? `@font-face{font-family:${name};font-weight:${w};src:url(${data}) format("woff2")}` : '';
@@ -646,7 +820,7 @@ const qdFontCss = () => {
 };
 function qdEnsureStyle() {
   if (document.getElementById('qdStyle')) return;
-  const s = document.createElement('style'); s.id = 'qdStyle'; s.textContent = qdFontCss() + QD_CSS; document.head.appendChild(s);
+  const s = document.createElement('style'); s.id = 'qdStyle'; s.textContent = qdFontCss() + QD_CSS + IV_CATALOG_CSS; document.head.appendChild(s);
 }
 
 /* ---- document data ---- */
@@ -691,6 +865,7 @@ function qdFromRecord(rec) {
 function qdHTML(d) {
   const q = d.type !== 'invoice', o = S();
   const template = ivTemplate(d.templateId);
+  const designAttrs = template ? ` data-layout="${esc(template.layout)}"${Number.isInteger(template.header) ? ` data-head="${template.header}" data-info="${template.info}" data-table="${template.table}" data-total="${template.total}"` : ''}` : '';
   const accent = template?.color || (/^#[0-9a-f]{6}$/i.test(o.accent || '') ? o.accent : '#f97316');
   const accentDark = `color-mix(in srgb, ${accent} 68%, #000)`;
   const accentLight = `color-mix(in srgb, ${accent} 18%, #fff)`;
@@ -711,7 +886,7 @@ function qdHTML(d) {
   const line = (icon, html) => html ? `<div class="qd-ln">${icon}<span>${html}</span></div>` : '';
   const fline = (icon, html) => html ? `<div class="qd-i">${icon}<span>${html}</span></div>` : '';
   const m2 = q ? qdDate(d.validUntil) : d.poNumber;
-  return `<div class="qd"${template ? ` data-layout="${template.layout}"` : ''} style="--qd-accent:${accent};--qd-accent-dark:${accentDark};--qd-accent-light:${accentLight}">
+  return `<div class="qd"${designAttrs} style="--qd-accent:${accent};--qd-accent-dark:${accentDark};--qd-accent-light:${accentLight}">
   <div class="qd-hd"><svg style="position:absolute;left:0;top:0" width="794" height="173" viewBox="0 0 794 173"><defs><linearGradient id="qdhg" x1="0" y1="0" x2="1" y2="0.35"><stop offset="0" stop-color="${accent}"/><stop offset="1" stop-color="${accentDark}"/></linearGradient></defs><polygon points="275,0 794,0 794,173 376,173" fill="${accent}"/><polygon points="291,0 794,0 794,173 399,173" fill="url(#qdhg)"/></svg>
     ${logo ? `<img class="qd-logo" style="left:${logoX}px;top:${logoY}px;width:${logoW}px;height:${logoH}px" src="${esc(logo)}" alt="">` : `<div class="qd-logo qd-logot" style="left:${logoX}px;top:${logoY}px;width:${logoW}px;height:${logoH}px">${esc(d.companyName)}</div>`}${bulb ? `<img class="qd-bulb" src="${esc(bulb)}" alt=""><div class="qd-bf"></div>` : ''}
     ${d.companyTagline ? `<div class="qd-tag">${qdNl(d.companyTagline)}</div>` : ''}<div class="qd-ttl" style="font-size:${q ? 39 : 47}px">${q ? 'QUOTATION' : 'INVOICE'}</div>${d.companySub ? `<div class="qd-sub">${esc(d.companySub).replace(/ {2}/g, ' &nbsp;')}</div>` : ''}</div>
@@ -1020,7 +1195,7 @@ const invoiceDesign = () => qdBlank('invoice');
 
 /* Business invoice as shown on screen (sales window, reprint preview). It carries its own CSS. */
 function businessInvoiceHTML(s) {
-  return `<style>${qdFontCss()}${QD_CSS}.iv-wrap{max-width:100%;overflow:auto}</style><div class="iv-wrap">${invoiceFromDocumentTemplate(s, invoiceDesign())}</div>`;
+  return `<style>${qdFontCss()}${QD_CSS}${IV_CATALOG_CSS}.iv-wrap{max-width:100%;overflow:auto}</style><div class="iv-wrap">${invoiceFromDocumentTemplate(s, invoiceDesign())}</div>`;
 }
 
 /* ---- printer & page setup: business invoice ---- */
@@ -1039,7 +1214,7 @@ function bizSheetHTML(inner, preview) {      // the A4 design placed on the chos
 }
 function printBizDoc(inner, title) {
   const c = bizPrintCfg();
-  printHTML(bizSheetHTML(inner, false), qdFontCss() + QD_CSS + IV_SHEET_CSS + `@page{size:${c.W}mm ${c.H}mm;margin:0}html,body{margin:0;padding:0;background:#fff;overflow:hidden}`, title || 'Invoice',
+  printHTML(bizSheetHTML(inner, false), qdFontCss() + QD_CSS + IV_CATALOG_CSS + IV_SHEET_CSS + `@page{size:${c.W}mm ${c.H}mm;margin:0}html,body{margin:0;padding:0;background:#fff;overflow:hidden}`, title || 'Invoice',
     c.std ? { paperSize: c.std } : { pageSizeMm: { width: c.W, height: c.H } });
 }
 /* Sale invoice / receipt print. Used by Sales & Returns and the sale-complete window. */
@@ -1146,19 +1321,19 @@ ${ivBizSetupHTML()}
 function ivTemplateCard(t, selectedId) {
   const color = t.color || (/^#[0-9a-f]{6}$/i.test(S().accent || '') ? S().accent : '#f97316');
   const dark = `color-mix(in srgb, ${color} 68%, #000)`;
-  const lightHeader = ['minimal', 'editorial', 'heritage'].includes(t.layout);
-  const darkHeader = ['executive', 'luxe'].includes(t.layout);
-  const head = lightHeader ? `height:7px;background:${color}` : `height:17px;background:${darkHeader ? dark : `linear-gradient(120deg,${color},${dark})`}`;
+  const header = t.id === IV_LEGACY_TEMPLATE.id ? 8 : Number.isInteger(t.header) ? t.header : 0;
+  const info = Number.isInteger(t.info) ? t.info : 0;
+  const table = Number.isInteger(t.table) ? t.table : 0, total = Number.isInteger(t.total) ? t.total : 0;
   const selected = selectedId === t.id;
-  return `<article class="iv-tpl-option" data-search="${esc((t.name + ' ' + t.description).toLowerCase())}" style="border:1px solid ${selected ? color : 'var(--bd)'};border-radius:9px;background:var(--card);padding:9px;min-width:0">
-    <div style="height:76px;background:#f2f4f7;border-radius:6px;display:grid;place-items:center;overflow:hidden"><div style="width:56px;height:68px;background:#fff;border:1px solid #d4d9e1;box-shadow:0 2px 5px #0002;overflow:hidden;position:relative">
-      <div style="${head}"></div><div style="position:absolute;top:22px;right:4px;width:24px;height:3px;background:${lightHeader ? dark : '#fff'}"></div>
-      <div style="margin:5px 4px 3px;height:12px;border-bottom:1px solid #d6dbe2;display:flex;gap:2px;align-items:flex-start"><i style="width:9px;height:9px;background:${color};border-radius:${t.layout === 'soft' ? '50%' : '1px'}"></i><i style="width:16px;height:2px;background:#7a8492;margin-top:2px"></i></div>
-      <div style="height:9px;margin:0 4px;background:${color};opacity:.9"></div><div style="margin:3px 4px;height:18px;background:repeating-linear-gradient(to bottom,#e8ebef 0 1px,transparent 1px 5px)"></div>
-      <div style="position:absolute;right:4px;bottom:5px;width:20px;height:8px;background:${dark};${t.layout === 'boxed' ? 'border:1px solid #fff' : ''}"></div>
+  return `<article class="iv-tpl-option" data-search="${esc((t.name + ' ' + t.description + ' ' + (t.paletteName || '')).toLowerCase())}" style="border:1px solid ${selected ? color : 'var(--bd)'};border-radius:9px;background:var(--card);padding:9px;min-width:0">
+    <div style="height:104px;background:#f2f4f7;border-radius:6px;display:grid;place-items:center;overflow:hidden"><div class="iv-mini" data-head="${header}" data-info="${info}" data-table="${table}" data-total="${total}" style="--mini-accent:${color};--mini-dark:${dark}">
+      <div class="iv-mini-head"><i class="iv-mini-logo"></i><i class="iv-mini-title"></i></div>
+      <div class="iv-mini-info"><i></i><i></i><i></i></div>
+      <div class="iv-mini-table"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="iv-mini-bottom"><i></i><i></i></div>
     </div></div>
     <b style="display:block;margin-top:7px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.name)}</b>
-    <small class="mut" style="display:block;min-height:28px;font-size:10px;line-height:1.3;margin-top:3px">${esc(t.description)}</small>
+    <small class="mut" style="display:block;min-height:43px;font-size:10px;line-height:1.3;margin-top:3px">${esc(t.description)}${t.paletteName ? `<br>Accent: ${esc(t.paletteName)}` : ''}</small>
     <button type="button" class="btn ${selected ? 'btn-p' : 'btn-s'}" data-act="ivChooseTemplate" data-id="${esc(t.id)}" aria-pressed="${selected}" style="width:100%;margin-top:6px">${selected ? 'Selected' : 'Use design'}</button>
   </article>`;
 }
@@ -1166,7 +1341,9 @@ A.ivBrowseTemplates = () => {
   if (!iv || !ivIsBiz()) return toast('Choose Business invoice to use the A4 design gallery.', 'err');
   const selectedId = iv.d.templateId || 'legacy-current';
   const cards = [ivTemplateCard(IV_LEGACY_TEMPLATE, selectedId), ...IV_TEMPLATES.map(t => ivTemplateCard(t, selectedId))].join('');
-  const ov = modal('Choose an invoice and quotation design', `<p class="mut">${IV_TEMPLATES.length} ready-made designs plus your current business-color design. Select a design, check the live preview, then save it to use it for new sale invoices and quotations.</p><input type="search" data-in="ivTplSearch" placeholder="Search by layout or color" style="width:100%;margin:0 0 10px"><div id="ivTemplateGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;max-height:58vh;overflow:auto;padding:2px">${cards}</div><p id="ivTemplateEmpty" class="empty" hidden>No matching designs.</p>`, '<button class="btn" data-act="closeModal">Close</button>');
+  const saved = ivTemplate(selectedId), archived = saved && !IV_TEMPLATES.some(t => t.id === selectedId);
+  const savedNote = archived && selectedId !== IV_LEGACY_TEMPLATE.id ? `<p class="qe-note">Current saved design: <b>${esc(saved.name)}</b> from the previous gallery. It remains active unless you choose and save one of the new layouts.</p>` : '';
+  const ov = modal('Choose an invoice and quotation design', `<p class="mut">${IV_TEMPLATES.length} individually named designs with different mastheads, information arrangements and item tables, plus your current business-color design. Choose one to load its live invoice preview, then save to use it for new sales invoices and quotations.</p>${savedNote}<input type="search" data-in="ivTplSearch" placeholder="Search by name, layout or accent color" style="width:100%;margin:0 0 10px"><div id="ivTemplateGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;max-height:58vh;overflow:auto;padding:2px">${cards}</div><p id="ivTemplateEmpty" class="empty" hidden>No matching designs.</p>`, '<button class="btn" data-act="closeModal">Close</button>');
   ov.classList.add('invoice-template-picker');
 };
 I.ivTplSearch = (value, el) => {
