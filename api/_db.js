@@ -24,6 +24,15 @@ function readUri() {
   return '';
 }
 
+// Single source of truth for the database name. The API and every CLI script in
+// scripts/ must use this so a super admin created by a script is always stored in
+// the same database the deployed API reads. Surrounding quotes/whitespace pasted
+// into the Vercel variable are ignored, like they are for the URI.
+function resolveDbName() {
+  const raw = String(process.env.MONGODB_DB || '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+  return raw || DEFAULT_DB_NAME;
+}
+
 function loadDriver() {
   try {
     return require('mongodb');
@@ -156,10 +165,10 @@ async function db(opts = {}) {
     attempt.catch(() => { if (clientPromise === attempt) clientPromise = null; });
   }
   const client = await clientPromise;
-  const database = client.db(process.env.MONGODB_DB || DEFAULT_DB_NAME);
+  const database = client.db(resolveDbName());
   if (opts && opts.fast) { ensureIndexes(database).catch(() => {}); return database; }
   await ensureIndexes(database);
   return database;
 }
 
-module.exports = { db };
+module.exports = { db, resolveDbName, DEFAULT_DB_NAME };

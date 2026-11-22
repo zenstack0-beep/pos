@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { MongoClient } = require('mongodb');
 const { hash } = require('../api/_password');
+const { resolveDbName } = require('../api/_db');
 
 async function main() {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGODB_URL;
@@ -17,7 +18,8 @@ async function main() {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
   try {
     await client.connect();
-    const database = client.db(process.env.MONGODB_DB || 'the_smart_pos');
+    const dbName = resolveDbName();
+    const database = client.db(dbName);
     const admins = database.collection('superadmins');
     await admins.createIndex({ email: 1 }, { unique: true });
     const duplicate = await admins.findOne({ email }, { projection: { _id: 1 } });
@@ -27,7 +29,7 @@ async function main() {
     const now = new Date();
     const admin = { id: crypto.randomUUID(), email, role, active: true, passwordHash: await hash(password), totp: null, pendingTotp: null, mfaEnabled: false, createdAt: now };
     await admins.insertOne(admin);
-    console.log(`Created initial ${role} superadmin: ${email}. MFA enrollment is required at first sign-in.`);
+    console.log(`Created initial ${role} superadmin: ${email} in database "${dbName}" (the deployed app must use this same MONGODB_DB). MFA enrollment is required at first sign-in.`);
   } finally {
     await client.close();
   }
