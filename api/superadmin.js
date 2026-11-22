@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
-const {db}=require('./_db');
+const {db,describeDbError}=require('./_db');
 const {json}=require('./_http');
 const {hash,verify}=require('./_password');
 const A=require('./_sa_auth');
@@ -13,7 +13,7 @@ const fail=(message,status=400,code='BAD_REQUEST')=>Object.assign(new Error(mess
 const idOk=id=>typeof id==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(id);
 const safeCsv=rows=>rows.map(row=>row.map(v=>{let s=String(v??'');if(typeof v==='string'&&/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}).join(',')).join('\r\n');
 module.exports=async function(req,res){for(const[k,v]of Object.entries(headers))res.setHeader(k,v);let route='';try{
- const u=new URL(req.url,'https://pos.invalid');route=String(u.searchParams.get('r')||''); if(route!=='session.login'&&!A.ROLES[route])return json(res,404,{error:'Unknown route',code:'NOT_FOUND'},headers); const cronRoute=route==='housekeeping'; if(!cronRoute&&!A.ipAllowed(req))return json(res,403,{error:'Access is not available from this network',code:'IP_DENIED'},headers); const dbx=await db(), body=req.body||{};
+ const u=new URL(req.url,'https://pos.invalid');route=String(u.searchParams.get('r')||''); if(route!=='session.login'&&!A.ROLES[route])return json(res,404,{error:'Unknown route',code:'NOT_FOUND'},headers); const cronRoute=route==='housekeeping'; if(!cronRoute&&!A.ipAllowed(req))return json(res,403,{error:'Access is not available from this network',code:'IP_DENIED'},headers); const dbx=await db(route.startsWith('session.')?{fast:true}:{}), body=req.body||{};
  if(cronRoute){if(req.method!=='GET')return json(res,405,{error:'Method not allowed',code:'METHOD'},headers);if(!process.env.CRON_SECRET||!A.safeEqual(req.headers.authorization||'',`Bearer ${process.env.CRON_SECRET}`))return json(res,404,{error:'Not found',code:'NOT_FOUND'},headers);const now=new Date(),grace=await dbx.collection('tenants').updateMany({status:{$in:['active','trial']},$or:[{expiresAt:{$lte:now}},{trialEndsAt:{$lte:now}}]},{$set:{status:'grace',updatedAt:now}}),expired=await dbx.collection('tenants').updateMany({status:'grace',expiresAt:{$exists:true},$expr:{$lte:[{$add:[{$toLong:'$expiresAt'},{$multiply:[{$ifNull:['$graceDays',0]},86400000]}]},now.getTime()]}},{$set:{status:'expired',updatedAt:now}});await audit(dbx,{id:'system',email:'system',role:'system'},req,'housekeeping.run','system','',null,`Refreshed ${grace.modifiedCount+expired.modifiedCount} tenant license state(s)`);return json(res,200,{updated:grace.modifiedCount+expired.modifiedCount},headers);}
  if(route==='session.login'){
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed',code:'METHOD'},headers);
@@ -86,4 +86,4 @@ module.exports=async function(req,res){for(const[k,v]of Object.entries(headers))
  default:throw fail('Unknown route',404,'NOT_FOUND');
  }
  return json(res,200,result,headers);
- }catch(e){console.error('Super admin request failed:',route,e.message);const setupHint=e.publicMessage||(/^(SUPERADMIN|POS)_SESSION_SECRET /.test(String(e.message))?`Server setup problem: ${e.message}. Fix it in the Vercel environment variables and redeploy.`:'');return json(res,e.status||500,{error:e.status?e.message:(setupHint||'The request could not be completed'),code:e.code||'INTERNAL'},headers);}};
+ }catch(e){console.error('Super admin request failed:',route,e.name,e.codeName||e.code||'',e.message);const setupHint=e.publicMessage||(/^(SUPERADMIN|POS)_SESSION_SECRET /.test(String(e.message))?`Server setup problem: ${e.message}. Fix it in the Vercel environment variables and redeploy.`:'');return json(res,e.status||500,{error:e.status?e.message:(setupHint||describeDbError(e)||'The request could not be completed'),code:e.code||'INTERNAL'},headers);}};

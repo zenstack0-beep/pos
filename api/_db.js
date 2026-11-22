@@ -24,6 +24,37 @@ function readUri() {
   return '';
 }
 
+// Turns a raw MongoDB failure into a message that is safe to show on the sign-in screens
+// (no credentials, host names or database names). Returns '' when the cause is not recognised.
+function describeDbError(cause) {
+  if (!cause) return '';
+  if (cause.publicMessage) return cause.publicMessage;
+  const text = `${cause.name || ''} ${cause.codeName || ''} ${cause.code || ''} ${cause.message || ''}`;
+  if (/not authorized|Unauthorized|not allowed to do action|\bcode 13\b|^\S*\s*\S*\s*13\b/i.test(text) && /Mongo/i.test(text)) {
+    return 'The MongoDB user in MONGODB_URI has no permission on the configured database. In Atlas open Database Access and give that user readWrite on this database (or Atlas admin), then redeploy.';
+  }
+  if (/Invalid namespace|Invalid database name|database names cannot|MongoInvalidArgumentError/i.test(text)) {
+    return 'MONGODB_DB is not a valid MongoDB database name. Set it to the exact database name and redeploy.';
+  }
+  if (/Authentication failed|AuthenticationFailed|bad auth/i.test(text)) return classifyConnectError(cause);
+  if (/MongoServerSelectionError|MongoNetworkError|MongoNetworkTimeoutError|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ReplicaSetNoPrimary/i.test(text)) return classifyConnectError(cause);
+  if (/IndexOptionsConflict|IndexKeySpecsConflict|DuplicateKey|E11000|Index build failed/i.test(text)) {
+    return 'MongoDB index setup failed because existing data conflicts with a required unique index (duplicate users or shop slugs). Check the Vercel function logs for the collection name.';
+  }
+  return '';
+}
+
+// A database name pasted from a redacted source ("[SENSITIVE]") or containing characters MongoDB rejects
+// would otherwise surface as a generic 500 on every request.
+function assertUsable(uri, name) {
+  if (/\[SENSITIVE\]/i.test(uri)) {
+    throw publicError('MONGODB_URI is a redacted placeholder', 'MONGODB_URI contains the placeholder "[SENSITIVE]" instead of the real connection string. Paste the real mongodb+srv:// URI into Vercel (Production) and redeploy.');
+  }
+  if (/\[SENSITIVE\]/i.test(name) || !/^[^\/\\. "$*<>:|?\x00]{1,63}$/.test(name)) {
+    throw publicError(`MONGODB_DB is not a valid database name: ${JSON.stringify(name)}`, 'MONGODB_DB is not a valid database name (no spaces or / \\ . " $ * < > : | ?, max 63 characters, not "[SENSITIVE]"). Fix it in Vercel (Production) and redeploy.');
+  }
+}
+
 // Single source of truth for the database name. The API and every CLI script in
 // scripts/ must use this so a super admin created by a script is always stored in
 // the same database the deployed API reads. Surrounding quotes/whitespace pasted
@@ -159,16 +190,18 @@ async function db(opts = {}) {
       'MongoDB is not configured: MONGODB_URI is missing for this Vercel environment. Add it under Settings > Environment Variables (Production) and redeploy.'
     );
   }
+  const databaseName = resolveDbName();
+  assertUsable(uri, databaseName);
   if (!clientPromise) {
     const attempt = connect(uri);
     clientPromise = attempt;
     attempt.catch(() => { if (clientPromise === attempt) clientPromise = null; });
   }
   const client = await clientPromise;
-  const database = client.db(resolveDbName());
+  const database = client.db(databaseName);
   if (opts && opts.fast) { ensureIndexes(database).catch(() => {}); return database; }
   await ensureIndexes(database);
   return database;
 }
 
-module.exports = { db, resolveDbName, DEFAULT_DB_NAME };
+module.exports = { db, resolveDbName, describeDbError, DEFAULT_DB_NAME };

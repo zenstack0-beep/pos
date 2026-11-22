@@ -1,5 +1,5 @@
 'use strict';
-const { db } = require('./_db');
+const { db, describeDbError } = require('./_db');
 const { json, authorized } = require('./_http');
 const { tenantId, license, tenantForRequest } = require('./_tenant');
 // The 4-second sync probe (?meta=1) only needs to know whether the shop is still allowed to sync, so its licence
@@ -54,5 +54,5 @@ module.exports = async (req,res) => {
       return json(res,200,{revision:result.revision});
     }
     return json(res,405,{error:'Method not allowed'});
-  } catch(e) { console.error('POS data failure:',e.message); return json(res,500,{error:'Could not sync POS data'}); }
+  } catch(e) { console.error('POS data failure:',e.message); return json(res,500,{error:describeDbError(e) || 'Could not sync POS data'}); }
 };
