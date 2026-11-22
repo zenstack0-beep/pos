@@ -110,12 +110,16 @@ async function create(database,actor,req,body){
   let domainRegistration;
   try{
     domainRegistration=await registerTenantDomain(slug);
-    if(domainRegistration.verified===false)domainRegistration={...domainRegistration,error:'Vercel added the hostname but it is not verified yet. In Vercel > Domains add the TXT record it shows (or use a wildcard domain on Vercel nameservers), then click Verify.'};
+    if(domainRegistration.verified===false){
+      const records=(domainRegistration.verification||[]).map(v=>`${v.type} ${v.domain} ${v.value}`).join(' | ');
+      domainRegistration={...domainRegistration,error:`Vercel added the hostname but it is not verified yet.${records?` Add this DNS record: ${records}.`:''} Then click Verify in Vercel > Domains, or run: node scripts/sync-tenant-domains.js --apply --slug ${slug}`};
+    }
   }catch(e){
     console.error('Vercel domain registration failed:',e.message);
     // Only super admins see this response, so Vercel's own message is safe to show.
-    domainRegistration={error:e.code==='VERCEL_DOMAIN_CONFIG'?e.message:`Tenant created, but Vercel did not add the hostname: ${String(e.message||'unknown error').slice(0,300)}`};
+    domainRegistration={error:e.code==='VERCEL_DOMAIN_CONFIG'?e.message:`Tenant created, but Vercel did not add the hostname: ${String(e.message||'unknown error').slice(0,400)}`};
   }
+  try{await database.collection('tenants').updateOne({_id:id},{$set:{domainStatus:{domain:domainRegistration.domain||null,verified:!domainRegistration.error&&domainRegistration.verified!==false,error:domainRegistration.error||domainRegistration.warning||null,checkedAt:new Date()}}});}catch(_){}
   await audit(database,actor,req,'tenant.create','tenant',id,id,`${name} and owner account created`);
   return {tenant:{...tenant,userCount:1},owner:{id:owner.id,name:owner.name,username:owner.username,role:owner.role},temporaryPassword:password,domainRegistration};
 }
