@@ -460,6 +460,36 @@ const quoteTotal = q => r2((q.items || []).reduce((sum, i) => sum + num(i.qty) *
 const quoteOriginalTotal = q => r2((q.items || []).reduce((sum, i) => sum + num(i.qty) * num(i.regularPrice ?? i.price), 0));
 const quoteDiscountTotal = q => r2(quoteOriginalTotal(q) - quoteTotal(q));
 
+/* Built-in business document designs. The 10 layout families and 6 palettes make
+   60 offline-ready choices; the existing business-color design remains available. */
+const IV_TEMPLATE_LAYOUTS = [
+  { id: 'classic', name: 'Classic', description: 'Familiar angled header and balanced sections' },
+  { id: 'minimal', name: 'Minimal', description: 'White space, clean rules and quiet headings' },
+  { id: 'executive', name: 'Executive', description: 'Dark full-width header with a formal finish' },
+  { id: 'editorial', name: 'Editorial', description: 'Simple masthead with strong document title' },
+  { id: 'heritage', name: 'Heritage', description: 'Traditional lines and restrained details' },
+  { id: 'boxed', name: 'Framed', description: 'Fine page frame and boxed information' },
+  { id: 'striped', name: 'Ledger', description: 'Alternating item rows for easy scanning' },
+  { id: 'luxe', name: 'Signature', description: 'Deep header, fine accents and premium totals' },
+  { id: 'compact', name: 'Compact', description: 'Tighter spacing for dense item lists' },
+  { id: 'soft', name: 'Soft', description: 'Rounded panels and gentle shaded sections' }
+];
+const IV_TEMPLATE_PALETTES = [
+  { id: 'amber', name: 'Amber', color: '#e66b24' },
+  { id: 'ocean', name: 'Ocean', color: '#2563a6' },
+  { id: 'forest', name: 'Forest', color: '#25805b' },
+  { id: 'plum', name: 'Plum', color: '#7651a5' },
+  { id: 'ruby', name: 'Ruby', color: '#ad4055' },
+  { id: 'slate', name: 'Slate', color: '#46566b' }
+];
+const IV_TEMPLATES = IV_TEMPLATE_LAYOUTS.flatMap(layout => IV_TEMPLATE_PALETTES.map(palette => ({
+  id: `${layout.id}-${palette.id}`, layout: layout.id, layoutName: layout.name,
+  palette: palette.id, paletteName: palette.name, color: palette.color,
+  name: `${layout.name} · ${palette.name}`, description: layout.description
+})));
+const IV_LEGACY_TEMPLATE = { id: 'legacy-current', name: 'Current business colors', description: 'Keeps the existing layout and your POS accent color.', layout: 'classic', color: '' };
+const ivTemplate = id => IV_TEMPLATES.find(t => t.id === id) || null;
+
 const qm = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const qdNl = v => esc(v).replace(/\n/g, '<br>');
 const qdLines = v => String(v || '').split('\n').filter(x => x.trim());
@@ -547,6 +577,67 @@ const QD_CSS = `
 .qd .qd-ft .qd-i{display:flex;align-items:center;gap:8px;min-width:0}
 .qd .qd-ft .qd-i svg{width:28px;height:28px;flex:0 0 28px}
 .qd .qd-ft .qd-q{margin-left:auto;border-left:1px solid var(--qd-accent-light);padding-left:14px;font-size:9.5px;line-height:1.5;letter-spacing:.2px}
+
+/* Built-in invoice/quotation layout families. The classic layout intentionally
+   leaves the original markup untouched for existing shops and saved documents. */
+.qd[data-layout="minimal"] .qd-hd{background:linear-gradient(var(--qd-accent) 0 9px,#fff 9px)}
+.qd[data-layout="minimal"] .qd-hd>svg{display:none}
+.qd[data-layout="minimal"] .qd-ttl{left:auto;right:32px;top:65px;color:var(--qd-accent-dark);font-size:42px!important}
+.qd[data-layout="minimal"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-layout="minimal"] .qd-tag{left:auto;right:32px;color:var(--qd-accent)}
+.qd[data-layout="minimal"] .qd-sub{left:auto;right:32px;top:128px;color:#526173}
+.qd[data-layout="minimal"] .qd-it th{background:#fff;color:var(--qd-accent-dark);border-top:2px solid var(--qd-accent);border-bottom:2px solid var(--qd-accent)}
+.qd[data-layout="minimal"] .qd-it td{background:#fff;border-left:0;border-right:0}
+.qd[data-layout="executive"] .qd-hd{background:var(--qd-accent-dark)}
+.qd[data-layout="executive"] .qd-hd>svg{display:none}
+.qd[data-layout="executive"] .qd-ttl{left:auto;right:30px;top:76px}
+.qd[data-layout="executive"] .qd-tag{left:auto;right:32px}
+.qd[data-layout="executive"] .qd-sub{left:auto;right:32px}
+.qd[data-layout="executive"] .qd-logot{color:#fff}
+.qd[data-layout="executive"] .qd-it th{background:var(--qd-accent-dark)}
+.qd[data-layout="executive"] .qd-co{border-right-color:var(--qd-accent)}
+.qd[data-layout="editorial"] .qd-hd{background:linear-gradient(#fff 0 167px,var(--qd-accent) 167px 173px)}
+.qd[data-layout="editorial"] .qd-hd>svg{display:none}
+.qd[data-layout="editorial"] .qd-ttl{left:auto;right:30px;top:67px;color:var(--qd-accent-dark);font-size:43px!important}
+.qd[data-layout="editorial"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-layout="editorial"] .qd-tag{left:auto;right:32px;color:var(--qd-accent)}
+.qd[data-layout="editorial"] .qd-sub{left:auto;right:32px;top:130px;color:#526173}
+.qd[data-layout="editorial"] .qd-it th{background:#fff;color:var(--qd-accent-dark);border-top:2px solid var(--qd-accent);border-bottom:2px solid var(--qd-accent)}
+.qd[data-layout="heritage"] .qd-hd{background:#f7f4ee;border-bottom:4px double var(--qd-accent)}
+.qd[data-layout="heritage"] .qd-hd>svg{display:none}
+.qd[data-layout="heritage"] .qd-ttl{left:auto;right:30px;top:75px;color:var(--qd-accent-dark);font-family:Georgia,serif;font-size:41px!important;letter-spacing:2px}
+.qd[data-layout="heritage"] .qd-ttl:after{width:100%;background:var(--qd-accent)}
+.qd[data-layout="heritage"] .qd-tag{left:auto;right:32px;color:var(--qd-accent-dark)}
+.qd[data-layout="heritage"] .qd-sub{left:auto;right:32px;top:137px;color:#526173}
+.qd[data-layout="heritage"] .qd-it th{background:#f7f4ee;color:var(--qd-accent-dark);border-top:1px solid var(--qd-accent);border-bottom:2px solid var(--qd-accent)}
+.qd[data-layout="boxed"]{outline:2px solid var(--qd-accent);outline-offset:-14px}
+.qd[data-layout="boxed"] .qd-co,.qd[data-layout="boxed"] .qd-bt,.qd[data-layout="boxed"] .qd-meta{border:1px solid #d7dce3;padding:8px}
+.qd[data-layout="boxed"] .qd-meta{width:232px}
+.qd[data-layout="boxed"] .qd-bottom{gap:12px}
+.qd[data-layout="boxed"] .qd-tc,.qd[data-layout="boxed"] .qd-bk,.qd[data-layout="boxed"] .qd-tot{border-radius:0}
+.qd[data-layout="striped"] .qd-it th{background:var(--qd-accent-dark)}
+.qd[data-layout="striped"] .qd-it td{background:#fff;border-left:0;border-right:0}
+.qd[data-layout="striped"] .qd-it tbody tr:nth-child(even) td{background:var(--qd-accent-light)}
+.qd[data-layout="striped"] .qd-tot{border-top:3px solid var(--qd-accent)}
+.qd[data-layout="luxe"] .qd-hd{background:linear-gradient(120deg,#172033,var(--qd-accent-dark))}
+.qd[data-layout="luxe"] .qd-hd>svg{display:none}
+.qd[data-layout="luxe"] .qd-ttl{left:auto;right:30px;top:76px;color:var(--qd-accent-light)}
+.qd[data-layout="luxe"] .qd-ttl:after{width:100%;background:var(--qd-accent-light)}
+.qd[data-layout="luxe"] .qd-tag{left:auto;right:32px;color:var(--qd-accent-light)}
+.qd[data-layout="luxe"] .qd-sub{left:auto;right:32px}
+.qd[data-layout="luxe"] .qd-it th{background:#172033;border-bottom:3px solid var(--qd-accent)}
+.qd[data-layout="luxe"] .qd-tot .qd-g{background:#172033;border-left:5px solid var(--qd-accent)}
+.qd[data-layout="luxe"] .qd-co{border-right:1px solid var(--qd-accent)}
+.qd[data-layout="compact"] .qd-it th{height:32px;font-size:11px}
+.qd[data-layout="compact"] .qd-it td{height:42px;padding:1px 4px;font-size:11px}
+.qd[data-layout="compact"] .qd-it td.qd-d{font-size:10.5px}
+.qd[data-layout="compact"] .qd-bottom{padding-top:8px;gap:6px}
+.qd[data-layout="compact"] .qd-tc,.qd[data-layout="compact"] .qd-bk{padding:7px 9px;font-size:10px}
+.qd[data-layout="compact"] .qd-tot .qd-r{height:36px}
+.qd[data-layout="soft"] .qd-meta,.qd[data-layout="soft"] .qd-tc,.qd[data-layout="soft"] .qd-bk,.qd[data-layout="soft"] .qd-tot{border-radius:12px;overflow:hidden}
+.qd[data-layout="soft"] .qd-it th{border-radius:7px 7px 0 0}
+.qd[data-layout="soft"] .qd-it td{border-left:0;border-right:0}
+.qd[data-layout="soft"] .qd-co{border-right:0;border-left:3px solid var(--qd-accent);padding-left:10px}
 `;
 const qdFontCss = () => {
   const f = window.QFONTS; if (!f) return '';
@@ -573,14 +664,19 @@ function qdBlank(type) {
     companySub: o.docSub || '', companyFootTag: o.docFootTag || '', signName: o.docSignName || '',
     terms: o.invoiceTerms || '', bankOn: false, accNo: '', accName: '', bank: '', branch: '',
     logoX: 22, logoY: 14, logoW: 246, logoH: 123,
-    items: [qdItem()], status: 'draft'
+    items: [qdItem()], status: 'draft', templateId: 'legacy-current'
   };
-  return inv ? ivApply(d) : d;       // invoices start from the saved business invoice design
+  const design = ivApply(d);         // new invoices and quotations share the selected business document design
+  if (!inv) { design.m2Label = 'VALID UNTIL'; design.numLabel = 'QUOTE #'; }
+  return design;
 }
 function qdFromRecord(rec) {
   const type = rec.type === 'invoice' ? 'invoice' : 'quotation', inv = type === 'invoice';
   const d = Object.assign(qdBlank(type), JSON.parse(JSON.stringify(rec)));
   d.type = type;
+  // Older saved documents used the original fixed layout. Do not silently change their appearance
+  // when the shop selects a new design for future invoices and quotations.
+  d.templateId = rec.templateId || 'legacy-current';
   d.dateLabel = d.dateLabel || 'DATE'; d.m2Label = d.m2Label || (inv ? 'PO NO' : 'VALID UNTIL'); d.numLabel = d.numLabel || (inv ? 'INV #' : 'QUOTE #');
   d.billName = d.billName ?? (cust(d.customerId)?.name || d.customerName || '');
   d.items = (rec.items || []).map(i => {
@@ -594,7 +690,8 @@ function qdFromRecord(rec) {
 /* ---- the A4 document (returns HTML; used by preview, print and PDF) ---- */
 function qdHTML(d) {
   const q = d.type !== 'invoice', o = S();
-  const accent = /^#[0-9a-f]{6}$/i.test(o.accent || '') ? o.accent : '#f97316';
+  const template = ivTemplate(d.templateId);
+  const accent = template?.color || (/^#[0-9a-f]{6}$/i.test(o.accent || '') ? o.accent : '#f97316');
   const accentDark = `color-mix(in srgb, ${accent} 68%, #000)`;
   const accentLight = `color-mix(in srgb, ${accent} 18%, #fff)`;
   const logo = o.docLogo || o.logoData || '', bulb = o.docBulb || '', sign = o.docSign || o.documentSignatureData || '';
@@ -614,7 +711,7 @@ function qdHTML(d) {
   const line = (icon, html) => html ? `<div class="qd-ln">${icon}<span>${html}</span></div>` : '';
   const fline = (icon, html) => html ? `<div class="qd-i">${icon}<span>${html}</span></div>` : '';
   const m2 = q ? qdDate(d.validUntil) : d.poNumber;
-  return `<div class="qd" style="--qd-accent:${accent};--qd-accent-dark:${accentDark};--qd-accent-light:${accentLight}">
+  return `<div class="qd"${template ? ` data-layout="${template.layout}"` : ''} style="--qd-accent:${accent};--qd-accent-dark:${accentDark};--qd-accent-light:${accentLight}">
   <div class="qd-hd"><svg style="position:absolute;left:0;top:0" width="794" height="173" viewBox="0 0 794 173"><defs><linearGradient id="qdhg" x1="0" y1="0" x2="1" y2="0.35"><stop offset="0" stop-color="${accent}"/><stop offset="1" stop-color="${accentDark}"/></linearGradient></defs><polygon points="275,0 794,0 794,173 376,173" fill="${accent}"/><polygon points="291,0 794,0 794,173 399,173" fill="url(#qdhg)"/></svg>
     ${logo ? `<img class="qd-logo" style="left:${logoX}px;top:${logoY}px;width:${logoW}px;height:${logoH}px" src="${esc(logo)}" alt="">` : `<div class="qd-logo qd-logot" style="left:${logoX}px;top:${logoY}px;width:${logoW}px;height:${logoH}px">${esc(d.companyName)}</div>`}${bulb ? `<img class="qd-bulb" src="${esc(bulb)}" alt=""><div class="qd-bf"></div>` : ''}
     ${d.companyTagline ? `<div class="qd-tag">${qdNl(d.companyTagline)}</div>` : ''}<div class="qd-ttl" style="font-size:${q ? 39 : 47}px">${q ? 'QUOTATION' : 'INVOICE'}</div>${d.companySub ? `<div class="qd-sub">${esc(d.companySub).replace(/ {2}/g, ' &nbsp;')}</div>` : ''}</div>
@@ -755,8 +852,8 @@ A.delQuoteTemplate = async id => { const t = (db.quotationTemplates || []).find(
 A.newInvoiceDoc = () => { qe = { d: qdBlank('invoice'), rec: null, isNew: true, drafts: {}, dirty: false }; qeMount(); };
 A.saveQuoteAsInvoiceTemplate = async () => {
   if (!qe || qe.d.type !== 'invoice') return toast('Open an invoice document design first', 'err');
-  if (!(await confirmDlg('Use this design as the business invoice template? It replaces the current one and is used for all new sales invoices and reprints.', 'Save as template'))) return;
-  await ivStore(qe.d); iv = null; toast('Business invoice template saved. It is now used for sales and reprints.');
+  if (!(await confirmDlg('Use this design as the shared business document template? It is used for new sales invoices, reprints, invoice documents and quotations.', 'Save as template'))) return;
+  await ivStore(qe.d); iv = null; toast('Business document template saved for sales invoices and new quotations.');
 };
 A.editQuote = (id, el) => { const rec = db.quotations.find(x => x.id === id); if (!rec) return; el?.closest('.ov')?.remove(); qe = { d: qdFromRecord(rec), rec, isNew: false, drafts: {}, dirty: false }; qeMount(); };
 A.delQuote = async id => { const q = db.quotations.find(x => x.id === id); if (!q || !(await confirmDlg(`Delete ${q.type === 'invoice' ? 'invoice document' : 'quotation'} ${q.no}?`))) return; db.quotations = db.quotations.filter(x => x.id !== id); log('quotation deleted', q.no); save(); P.quotations(); };
@@ -875,7 +972,7 @@ A.qeSave = () => {
     dateLabel: d.dateLabel, m2Label: d.m2Label, numLabel: d.numLabel,
     customerId: d.customerId || '', customerName: String(d.billName || '').trim() || c?.name || '', billName: String(d.billName || '').trim(), billPhone: String(d.billPhone || '').trim(), billAddress: String(d.billAddress || '').trim(),
     companyName: String(d.companyName || '').trim(), companyTagline: String(d.companyTagline || '').trim(), companyAddress: String(d.companyAddress || '').trim(), companyPhone: String(d.companyPhone || '').trim(), companyEmail: String(d.companyEmail || '').trim(),
-    companySub: String(d.companySub || '').trim(), companyFootTag: String(d.companyFootTag || '').trim(), signName: String(d.signName || '').trim(),
+    companySub: String(d.companySub || '').trim(), companyFootTag: String(d.companyFootTag || '').trim(), signName: String(d.signName || '').trim(), templateId: d.templateId || 'legacy-current',
     logoX: ivClamp(d.logoX ?? 22, 0, 794), logoY: ivClamp(d.logoY ?? 14, 0, 173), logoW: ivClamp(d.logoW ?? 246, 20, 794), logoH: ivClamp(d.logoH ?? 123, 20, 173),
     terms: d.terms || '', bankOn: !!d.bankOn, accNo: d.accNo || '', accName: d.accName || '', bank: d.bank || '', branch: d.branch || '',
     items, status: ex?.status || 'draft', createdAt: ex?.createdAt || nowISO(), updatedAt: nowISO(), user: ex?.user || me.name
@@ -900,7 +997,7 @@ A.convertQuote = async id => { const q = db.quotations.find(x => x.id === id); i
    saved). The page setup below (paper, margins, scale, offsets, feed, text size) is applied to BOTH invoice types:
    - Business invoice (A4 design): scaled to fit the printable area of the chosen paper, or a manual scale.
    - Thermal receipt: fluid "Auto" width for any roll, fixed 58/80 mm, custom width, or an A4/Letter sheet. */
-const IV_FIELDS = [...QE_COMPANY, 'dateLabel', 'm2Label', 'numLabel', 'terms', 'bankOn', 'accNo', 'accName', 'bank', 'branch', 'logoX', 'logoY', 'logoW', 'logoH'];
+const IV_FIELDS = [...QE_COMPANY, 'dateLabel', 'm2Label', 'numLabel', 'terms', 'bankOn', 'accNo', 'accName', 'bank', 'branch', 'logoX', 'logoY', 'logoW', 'logoH', 'templateId'];
 const IV_IMAGES = ['docLogo', 'docBulb', 'docSign'];
 const IV_PAPERS = { A4: [210, 297], A5: [148, 210], Letter: [215.9, 279.4], Legal: [215.9, 355.6] };
 const IV_SHEET_CSS = '.iv-sheet{position:relative;overflow:hidden;background:#fff;box-sizing:border-box}.iv-fit{position:absolute;width:794px;height:1122px;transform-origin:0 0}';
@@ -1007,7 +1104,7 @@ function ivMount() {
     view(`${hdr('Invoice template')}<div class="grid2"><div class="card"><h3>Invoice type</h3>${ivTypeSel()}<h3 style="margin-top:14px">Printer &amp; page setup</h3>${ivReceiptSetupHTML()}</div><div class="card"><h3>Receipt preview</h3><p class="mut sm">Sample sale. The preview follows the paper width and text size above.</p><div style="overflow:auto"><div id="rcPrev"></div></div></div></div>`);
     return ivReceiptPreview();
   }
-  view(`${hdr('Invoice template', '<button class="btn" data-act="ivDefault">Reset to default</button><button class="btn btn-p" data-act="ivSave">Save template</button>')}
+  view(`${hdr('Invoice template', `<button class="btn" data-act="ivBrowseTemplates">Browse ${IV_TEMPLATES.length} designs</button><button class="btn" data-act="ivDefault">Reset to default</button><button class="btn btn-p" data-act="ivSave">Save template</button>`)}
 <div class="qe"><aside class="qe-panel" id="ivPanel"></aside><div class="qe-right"><div class="qe-warn" id="ivWarn" hidden>⚠ The content is longer than one A4 page. Shorten the terms or other text: anything below the page edge is cut off when printing.</div><main class="qe-stage" id="ivStage"><div class="qe-scaler" id="ivScaler"></div></main></div></div>`);
   ivForm(); ivRender();
 }
@@ -1025,8 +1122,9 @@ function ivForm() {
   const panel = $('#ivPanel'); if (!panel || !iv) return;
   const st = panel.scrollTop, d = iv.d, o = S();
   const imgBtn = (k, label) => o[k] ? `<button type="button" class="qe-x" data-act="ivImgClear" data-id="${k}">Remove ${label}</button>` : '';
+  const selectedTemplate = ivTemplate(d.templateId) || IV_LEGACY_TEMPLATE;
   panel.innerHTML = `<fieldset class="qe-fs"><legend>Invoice type</legend>${ivTypeSel()}
-  <p class="qe-note">The business invoice is the same design shown in Quotations → Invoice. Save it once and every new sale invoice and reprint uses it. The preview uses sample items.</p></fieldset>
+  <p class="qe-note">The selected A4 design is shared by new sale invoices, reprints, invoice documents and quotations. Current design: <b>${esc(selectedTemplate.name)}</b>. Choose from ${IV_TEMPLATES.length} built-in designs, then save to make the choice active.</p><button type="button" class="btn" data-act="ivBrowseTemplates">Browse designs</button></fieldset>
 <fieldset class="qe-fs"><legend>Your company</legend>${ivF('Company name', 'companyName')}${ivF('Address', 'companyAddress', { area: 1 })}
   <div class="qe-row2">${ivF('Phone', 'companyPhone')}${ivF('Email', 'companyEmail')}</div>
   <label class="qe-l">Additional phone (optional)<input type="tel" data-in="set" data-n="phone2" value="${esc(o.phone2 || '')}"></label>
@@ -1044,6 +1142,47 @@ ${ivBizSetupHTML()}
 <div class="qe-actions"><button type="button" class="btn btn-p" data-act="ivSave">Save template</button><button type="button" class="btn" data-act="ivReset">Discard changes</button></div>`;
   panel.scrollTop = st;
 }
+
+function ivTemplateCard(t, selectedId) {
+  const color = t.color || (/^#[0-9a-f]{6}$/i.test(S().accent || '') ? S().accent : '#f97316');
+  const dark = `color-mix(in srgb, ${color} 68%, #000)`;
+  const lightHeader = ['minimal', 'editorial', 'heritage'].includes(t.layout);
+  const darkHeader = ['executive', 'luxe'].includes(t.layout);
+  const head = lightHeader ? `height:7px;background:${color}` : `height:17px;background:${darkHeader ? dark : `linear-gradient(120deg,${color},${dark})`}`;
+  const selected = selectedId === t.id;
+  return `<article class="iv-tpl-option" data-search="${esc((t.name + ' ' + t.description).toLowerCase())}" style="border:1px solid ${selected ? color : 'var(--bd)'};border-radius:9px;background:var(--card);padding:9px;min-width:0">
+    <div style="height:76px;background:#f2f4f7;border-radius:6px;display:grid;place-items:center;overflow:hidden"><div style="width:56px;height:68px;background:#fff;border:1px solid #d4d9e1;box-shadow:0 2px 5px #0002;overflow:hidden;position:relative">
+      <div style="${head}"></div><div style="position:absolute;top:22px;right:4px;width:24px;height:3px;background:${lightHeader ? dark : '#fff'}"></div>
+      <div style="margin:5px 4px 3px;height:12px;border-bottom:1px solid #d6dbe2;display:flex;gap:2px;align-items:flex-start"><i style="width:9px;height:9px;background:${color};border-radius:${t.layout === 'soft' ? '50%' : '1px'}"></i><i style="width:16px;height:2px;background:#7a8492;margin-top:2px"></i></div>
+      <div style="height:9px;margin:0 4px;background:${color};opacity:.9"></div><div style="margin:3px 4px;height:18px;background:repeating-linear-gradient(to bottom,#e8ebef 0 1px,transparent 1px 5px)"></div>
+      <div style="position:absolute;right:4px;bottom:5px;width:20px;height:8px;background:${dark};${t.layout === 'boxed' ? 'border:1px solid #fff' : ''}"></div>
+    </div></div>
+    <b style="display:block;margin-top:7px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.name)}</b>
+    <small class="mut" style="display:block;min-height:28px;font-size:10px;line-height:1.3;margin-top:3px">${esc(t.description)}</small>
+    <button type="button" class="btn ${selected ? 'btn-p' : 'btn-s'}" data-act="ivChooseTemplate" data-id="${esc(t.id)}" aria-pressed="${selected}" style="width:100%;margin-top:6px">${selected ? 'Selected' : 'Use design'}</button>
+  </article>`;
+}
+A.ivBrowseTemplates = () => {
+  if (!iv || !ivIsBiz()) return toast('Choose Business invoice to use the A4 design gallery.', 'err');
+  const selectedId = iv.d.templateId || 'legacy-current';
+  const cards = [ivTemplateCard(IV_LEGACY_TEMPLATE, selectedId), ...IV_TEMPLATES.map(t => ivTemplateCard(t, selectedId))].join('');
+  const ov = modal('Choose an invoice and quotation design', `<p class="mut">${IV_TEMPLATES.length} ready-made designs plus your current business-color design. Select a design, check the live preview, then save it to use it for new sale invoices and quotations.</p><input type="search" data-in="ivTplSearch" placeholder="Search by layout or color" style="width:100%;margin:0 0 10px"><div id="ivTemplateGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;max-height:58vh;overflow:auto;padding:2px">${cards}</div><p id="ivTemplateEmpty" class="empty" hidden>No matching designs.</p>`, '<button class="btn" data-act="closeModal">Close</button>');
+  ov.classList.add('invoice-template-picker');
+};
+I.ivTplSearch = (value, el) => {
+  const ov = el.closest('.invoice-template-picker'); if (!ov) return;
+  const q = String(value || '').trim().toLowerCase(); let visible = 0;
+  ov.querySelectorAll('.iv-tpl-option').forEach(card => { const show = !q || card.dataset.search.includes(q); card.hidden = !show; if (show) visible++; });
+  const empty = ov.querySelector('#ivTemplateEmpty'); if (empty) empty.hidden = visible !== 0;
+};
+A.ivChooseTemplate = (id, el) => {
+  if (!iv) return;
+  const choice = id === IV_LEGACY_TEMPLATE.id ? IV_LEGACY_TEMPLATE : ivTemplate(id);
+  if (!choice) return toast('That design is unavailable. Reopen the template gallery.', 'err');
+  el?.closest('.ov')?.remove();
+  iv.d.templateId = choice.id; iv.dirty = true; ivForm(); ivRender();
+  toast(`“${choice.name}” selected. Save template to use it for new sale invoices and quotations.`);
+};
 function ivRender() {
   const sc = $('#ivScaler'); if (!sc || !iv) return;
   sc.innerHTML = bizSheetHTML(invoiceFromDocumentTemplate(ivSample(), iv.d), true);
@@ -1070,7 +1209,7 @@ A.ivSave = async () => {
   if (!String(d.companyName || '').trim()) return toast('Enter the company name', 'err');
   ['companyName', 'companyAddress', 'companyPhone', 'companyEmail', 'companyTagline', 'companySub', 'companyFootTag', 'signName'].forEach(k => { d[k] = String(d[k] || '').trim(); });
   await ivStore(d); iv.dirty = false;
-  toast('Invoice template saved. New sales, reprints and Quotations → Invoice will use it.');
+  toast('Invoice template saved. New sales invoices, reprints, invoice documents and quotations will use it.');
 };
 A.ivReset = async () => {
   if (!iv) return;

@@ -30,6 +30,8 @@ Open this folder in VS Code, then in the terminal: `npm install` (once) and `npm
 Shop name, address, phone, currency, tax, receipt text, colours, prefixes: **Settings** page (no code needed).
 Default values for a fresh database are in `defaults()` in `core.js`.
 
+The **Invoice template** page includes 60 built-in A4 designs and the existing business-color design. The saved business design is used for new sale invoices, reprints, invoice documents, and new quotations. Existing saved documents keep their saved design.
+
 ## Where is my data?
 Desktop app: `data.json` in the app data folder (Settings page shows the exact path):
 Windows `%APPDATA%\the-smart-pos\` · Mac `~/Library/Application Support/the-smart-pos/`
