@@ -7,6 +7,12 @@ async function registerTenantDomain(slug) {
     .replace(/^https?:\/\//, '').split('/')[0].replace(/:\d+$/, '');
   if (!root || root.endsWith('.vercel.app')) return { skipped: true };
 
+  // Permanent setup: when "*.<root>" is added once to the Vercel project (domain on Vercel nameservers),
+  // every shop hostname is already served, so no per-shop API call is needed and none can fail.
+  if (String(process.env.POS_WILDCARD_DOMAIN || '').trim().toLowerCase() === 'true') {
+    return { domain: `${slug}.${root}`, skipped: true, wildcard: true };
+  }
+
   const token = String(process.env.VERCEL_API_TOKEN || '').trim();
   const projectId = String(process.env.VERCEL_PROJECT_ID || '').trim();
   const teamId = String(process.env.VERCEL_TEAM_ID || '').trim();
