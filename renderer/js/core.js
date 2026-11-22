@@ -35,7 +35,7 @@ function defaults() {
   return {
     v: 1,
     settings: {
-      business: 'POS', address: '', phone: '', email: '', tagline: '', description: '', logoData: '', customerDisplay: false,
+      business: 'POS', address: '', phone: '', phone2: '', email: '', tagline: '', description: '', logoData: '', customerDisplay: false,
       invoiceStyle: 'a4', invoiceNotes: 'It was great doing business with you.', invoiceTerms: 'Please make the payment by the due date.',
       invoiceDocumentTemplateId: '', invoiceDocumentTemplates: [],
       invoiceTitle: 'INVOICE', invoiceFont: 'Arial', invoiceFontSize: 14, invoicePageSize: 'A4', invoicePageMargin: 14, invoiceLogoWidth: 120,
@@ -365,7 +365,7 @@ function receipt(s) {
   const receiptCss = `@page{size:${pageSize};margin:${padding}mm}.receipt{box-sizing:border-box;width:${width};max-width:100%;overflow:hidden;overflow-wrap:anywhere;line-height:1.25}.receipt *{box-sizing:border-box;max-width:100%}.receipt-head{text-align:center;overflow-wrap:anywhere}.receipt-logo{display:block;width:${sheet ? 90 : 48}px;height:${sheet ? 90 : 48}px;max-width:100%;object-fit:contain;margin:0 auto 4px}.receipt-business{font-size:${fs + 3}px;font-weight:bold;line-height:1.15;overflow-wrap:anywhere}.receipt table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:${fs}px}.receipt th,.receipt td{padding:2px 1px;vertical-align:top;overflow-wrap:anywhere;word-break:normal}.receipt th:first-child,.receipt td:first-child{text-align:left}.receipt th:last-child,.receipt td:last-child{width:39%;text-align:right}.receipt .num{text-align:right;font-variant-numeric:tabular-nums;white-space:normal}.receipt .totline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:start}.receipt .totline>*{min-width:0;overflow-wrap:anywhere}.receipt hr{border:0;border-top:1px solid #888;margin:6px 0}.receipt small{font-size:.85em}`;
   return `<style>${receiptCss}</style><div class="receipt" style="margin:${autoAlign ? '0 auto' : '0'};position:relative;left:${offsetX}mm;top:${offsetY}mm;font-size:${fs}px;padding:${feedTop}mm 0 ${feedBottom}mm">
 <div class="receipt-head">${S().logoData ? `<img class="receipt-logo" src="${esc(S().logoData)}" alt="">` : ''}<div class="receipt-business">${esc(S().business)}</div>
-<div>${esc(S().address)}</div><div>Tel: ${esc(S().phone)}</div>${S().email ? `<div>${esc(S().email)}</div>` : ''}</div><hr>
+<div>${esc(S().address)}</div><div>Tel: ${esc([S().phone, S().phone2].filter(Boolean).join(' / '))}</div>${S().email ? `<div>${esc(S().email)}</div>` : ''}</div><hr>
 <div>Invoice: <b>${esc(s.no)}</b>${s.status === 'void' ? ' <b>(VOID)</b>' : ''}</div><div>Date: ${dt(s.at)}</div><div>Cashier: ${esc(s.user)}</div>${c ? `<div>Customer: ${esc(c.name)} ${esc(c.phone || '')}</div>` : ''}<hr>
 <table><thead><tr>${sheet ? '<th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th>' : '<th>Item / Qty × Price</th><th class="num">Total</th>'}</tr></thead><tbody>${rows}</tbody></table><hr>
 <div class="totline"><span>Subtotal</span><span class="num">${money(s.itemsGross)}</span></div>
