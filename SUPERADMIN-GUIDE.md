@@ -14,11 +14,11 @@ Set these Vercel environment variables in Production and redeploy:
 | `MONGODB_DB` | Database name (optional) | `the_smart_pos` |
 | `POS_SESSION_SECRET` | Shop cookie signing | `openssl rand -base64 48` (at least 32 characters) |
 | `SUPERADMIN_SESSION_SECRET` | Independent super admin encryption/session key | `openssl rand -base64 64` (at least 48 characters) |
-| `SUPERADMIN_ALLOWED_IPS` | Optional network allowlist | Comma-separated exact client IP addresses |
+| `SUPERADMIN_ALLOWED_IPS` | Optional network allowlist enforced by the super-admin API | Comma-separated exact client IP addresses or IPv4 CIDR ranges |
 | `CRON_SECRET` | Optional paid-plan housekeeping endpoint | `openssl rand -base64 48` |
 | `DESKTOP_LICENSE_PRIVATE_KEY` | Ed25519 private key used to sign offline desktop licenses | Run `npm run license:setup` on a trusted release machine; store the full PEM value only in Vercel. |
 
-Never use the same value for both session secrets. `SUPERADMIN_ALLOWED_IPS` is not enforced by this release's function handler; protect access with Vercel deployment/network controls until an edge allowlist is configured. Do not commit any `.env` file.
+Never use the same value for both session secrets. Leave `SUPERADMIN_ALLOWED_IPS` unset unless you have stable client IP addresses; when set, requests from other IPs are rejected. Do not commit any `.env` file.
 
 ## Create the first root account
 
@@ -46,11 +46,21 @@ The CLI stores a scrypt password hash and prints only a success message. Open `/
 
 Changing `POS_SESSION_SECRET` invalidates shop sessions. Changing `SUPERADMIN_SESSION_SECRET` invalidates super admin cookie sessions and makes encrypted TOTP values unreadable, so schedule it with MFA re-enrollment. The recovery script clears MFA for one active account, invalidates its active sessions, and forces enrollment at the next login:
 
+When moving to a new Vercel project, first point it at the existing live MongoDB database and keep the existing `SUPERADMIN_SESSION_SECRET` if you still have it. The key must be at least 48 characters. If the old key is unavailable, set a new key of at least 48 characters and redeploy, then run the recovery script below using the new project's exact `MONGODB_URI` and `MONGODB_DB`. Do not run recovery against a local or old-project database; the account reset must target the database used by the live deployment.
+
 ```sh
 MONGODB_URI='mongodb+srv://…' SA_EMAIL='owner@example.com' node scripts/reset-superadmin-mfa.js
 ```
 
-The script requires typing `RESET-MFA` interactively. Run it only on a trusted machine with database access.
+The script accepts `SA_EMAIL` or `SUPERADMIN_EMAIL` and requires typing `RESET-MFA` interactively. It clears only the named active account's MFA, recovery codes, temporary lockout and sessions. Run it only on a trusted machine with database access, then sign in with the existing password and enroll a new authenticator immediately.
+
+If the password is also rejected, use the combined recovery command below. `vercel env pull` may replace Production secrets with `[SENSITIVE]`; run the command through Vercel so the script receives the Production MongoDB connection and encryption key directly. It requires the Production session secret to be at least 48 characters, confirms the active account, and reads the new password twice without echoing it:
+
+```sh
+SA_EMAIL='admin@example.com' vercel env run -e production -- node scripts/recover-superadmin.js
+```
+
+Type `RESET-SUPERADMIN` when prompted. This changes the named account's password, clears its MFA and recovery codes, unlocks it, and revokes its sessions. Then sign in at `/superadmin/` and enroll a new authenticator. Use the same database as the live deployment; the script refuses redacted connection placeholders.
 
 ## Future desktop entitlement protocol
 
