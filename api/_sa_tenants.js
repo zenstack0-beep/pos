@@ -108,9 +108,13 @@ async function create(database,actor,req,body){
     throw e;
   }
   let domainRegistration;
-  try{domainRegistration=await registerTenantDomain(slug);}catch(e){
+  try{
+    domainRegistration=await registerTenantDomain(slug);
+    if(domainRegistration.verified===false)domainRegistration={...domainRegistration,error:'Vercel added the hostname but it is not verified yet. In Vercel > Domains add the TXT record it shows (or use a wildcard domain on Vercel nameservers), then click Verify.'};
+  }catch(e){
     console.error('Vercel domain registration failed:',e.message);
-    domainRegistration={error:e.code==='VERCEL_DOMAIN_CONFIG'?e.message:'Tenant created, but Vercel did not confirm the hostname. Check Vercel project domain settings.'};
+    // Only super admins see this response, so Vercel's own message is safe to show.
+    domainRegistration={error:e.code==='VERCEL_DOMAIN_CONFIG'?e.message:`Tenant created, but Vercel did not add the hostname: ${String(e.message||'unknown error').slice(0,300)}`};
   }
   await audit(database,actor,req,'tenant.create','tenant',id,id,`${name} and owner account created`);
   return {tenant:{...tenant,userCount:1},owner:{id:owner.id,name:owner.name,username:owner.username,role:owner.role},temporaryPassword:password,domainRegistration};

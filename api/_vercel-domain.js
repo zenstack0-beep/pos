@@ -23,7 +23,8 @@ async function registerTenantDomain(slug) {
     body: JSON.stringify({ name: domain })
   });
   const result = await response.json().catch(() => ({}));
-  if (response.ok || (response.status === 409 && /already|exists|assigned/i.test(JSON.stringify(result)))) return { domain };
+  if (response.ok) return { domain, verified: result.verified !== false };
+  if (response.status === 409 && /already|exists|assigned/i.test(JSON.stringify(result))) return { domain, verified: true };
   const message = result.error?.message || result.message || `Vercel domain registration failed (HTTP ${response.status})`;
   throw Object.assign(new Error(message), { code: 'VERCEL_DOMAIN_FAILED', status: response.status });
 }

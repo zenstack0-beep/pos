@@ -299,7 +299,7 @@
       const b={};for(const [k,v] of Object.entries(f))b[k]=v.control.value.trim();
       const d=await api('tenants.create',b);
       closeModal();
-      secret(`Temporary password for ${d.owner.username}`,d.temporaryPassword);
+      secret(`Temporary password for ${d.owner.username}${d.domainRegistration&&d.domainRegistration.error?` — WARNING, shop address not set up: ${d.domainRegistration.error}`:''}`,d.temporaryPassword);
       location.hash=`#/tenants/${encodeURIComponent(d.tenant._id)}`;
     });
     const hint=el('small','Enter a slug to check its subdomain.','muted');f.slug.append(hint);let checkTimer;
