@@ -458,7 +458,10 @@ document.addEventListener('keydown', e => {
   loginScreen();
   await loadDB();
   if (!db) { db = defaults(); await flush(); }
-  if (window.posApi) { window.posApi.setBackup(cfgForMain()); window.posApi.onBackupError(m => toast('BACKUP FAILED: ' + m, 'err')); }
+  if (window.posApi) {
+    window.posApi.onBackupError(m => toast('BACKUP FAILED: ' + m, 'err'));
+    window.posApi.setBackup(cfgForMain()).catch(e => toast('BACKUP SETTINGS FAILED: ' + e.message, 'err'));
+  }
   applyTheme();
   if (window.posApi) licenseInfo = db.users.length ? await window.posApi.startLicense() : await window.posApi.licenseStatus();
   if (licenseInfo?.initialized && !licenseInfo.active) licenseScreen();

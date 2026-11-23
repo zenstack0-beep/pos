@@ -33,11 +33,20 @@ let win;
 let customerWin;
 let customerDisplayData = null;
 let running = false;
+let appIsQuitting = false;
 let cfg = { dir: '', time: '02:00', frequency: 'daily', weekday: 1, keep: 30, on: true };
 
 const dataFile = () => path.join(app.getPath('userData'), 'data.json');
 const logFile = () => path.join(app.getPath('userData'), 'backup-log.json');
 const licenseFile = () => path.join(app.getPath('userData'), 'license.json');
+function showOpenDialog(options) {
+  const parent = win && !win.isDestroyed() ? win : null;
+  return parent ? dialog.showOpenDialog(parent, options) : dialog.showOpenDialog(options);
+}
+function showSaveDialog(options) {
+  const parent = win && !win.isDestroyed() ? win : null;
+  return parent ? dialog.showSaveDialog(parent, options) : dialog.showSaveDialog(options);
+}
 const TRIAL_MS = 24 * 60 * 60 * 1000;
 // Offline recovery credential is validated only in the trusted main process.
 // Store only its SHA-256 digest so the plaintext key is never sent to the renderer.
@@ -585,22 +594,38 @@ function writeLog(entry) {
 }
 
 function createWindow() {
-  win = new BrowserWindow({
+  if (win && !win.isDestroyed()) return win;
+  const mainWindow = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1100, minHeight: 700,
     title: 'POS', backgroundColor: '#f4f5f7',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
-  win.setMenuBarVisibility(false);
-  win.loadFile(rendererFile('index.html'));
+  win = mainWindow;
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.loadFile(rendererFile('index.html'));
+  let bundledRecoveryAttempted = false;
   // A live UI bundle must never leave the shop without a working POS: if it fails to
   // load or crashes, drop it and fall back to the UI bundled with the installer.
   const fallbackToBundled = () => {
     if (uiUpdater.resolveRendererDir().source !== 'live') return;
     uiUpdater.discardActive();
-    if (win && !win.isDestroyed()) win.loadFile(rendererFile('index.html'));
+    if (!mainWindow.isDestroyed()) mainWindow.loadFile(rendererFile('index.html'));
   };
-  win.webContents.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => { if (isMainFrame && code !== -3) fallbackToBundled(); });
-  win.webContents.on('render-process-gone', fallbackToBundled);
+  mainWindow.webContents.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => { if (isMainFrame && code !== -3) fallbackToBundled(); });
+  mainWindow.webContents.on('render-process-gone', () => {
+    if (uiUpdater.resolveRendererDir().source === 'live') { fallbackToBundled(); return; }
+    // A renderer crash should not leave the local POS permanently unusable.
+    // Retry the bundled screen once; avoid an endless reload loop on low-memory PCs.
+    if (appIsQuitting || bundledRecoveryAttempted || mainWindow.isDestroyed()) return;
+    bundledRecoveryAttempted = true;
+    setTimeout(() => {
+      if (appIsQuitting || mainWindow.isDestroyed()) return;
+      try { mainWindow.reload(); }
+      catch (e) { console.error('Could not restart the POS screen:', e.message); }
+    }, 500);
+  });
+  mainWindow.on('closed', () => { if (win === mainWindow) win = null; });
+  return mainWindow;
 }
 
 function openCustomerDisplay() {
@@ -608,11 +633,14 @@ function openCustomerDisplay() {
   const displays = screen.getAllDisplays();
   const secondary = displays.find(d => d.id !== screen.getPrimaryDisplay().id);
   const bounds = secondary ? { x: secondary.bounds.x, y: secondary.bounds.y, width: secondary.bounds.width, height: secondary.bounds.height } : { width: 900, height: 650 };
-  customerWin = new BrowserWindow({ ...bounds, title: 'Customer Display', backgroundColor: '#0b1220', webPreferences: { preload: path.join(__dirname, 'customer-preload.js'), contextIsolation: true, nodeIntegration: false } });
-  customerWin.setMenuBarVisibility(false);
-  customerWin.loadFile(rendererFile('customer-display.html'));
-  customerWin.webContents.on('did-finish-load', () => { if (customerDisplayData) customerWin?.webContents.send('customer-display:data', customerDisplayData); });
-  customerWin.on('closed', () => { customerWin = null; });
+  const displayWindow = new BrowserWindow({ ...bounds, title: 'Customer Display', backgroundColor: '#0b1220', webPreferences: { preload: path.join(__dirname, 'customer-preload.js'), contextIsolation: true, nodeIntegration: false } });
+  customerWin = displayWindow;
+  displayWindow.setMenuBarVisibility(false);
+  displayWindow.loadFile(rendererFile('customer-display.html'));
+  displayWindow.webContents.on('did-finish-load', () => {
+    if (customerDisplayData && !displayWindow.isDestroyed() && !displayWindow.webContents.isDestroyed()) displayWindow.webContents.send('customer-display:data', customerDisplayData);
+  });
+  displayWindow.on('closed', () => { if (customerWin === displayWindow) customerWin = null; });
 }
 ipcMain.handle('customer-display:open', () => { openCustomerDisplay(); return true; });
 ipcMain.handle('customer-display:close', () => { if (customerWin && !customerWin.isDestroyed()) customerWin.close(); return true; });
@@ -628,14 +656,52 @@ ipcMain.on('customer-display:phone-submit', () => {
   if (win && !win.isDestroyed()) win.webContents.send('customer-display:phone-submit');
 });
 ipcMain.handle('branding:pick-logo', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, { title: 'Choose business logo', properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
+  const { canceled, filePaths } = await showOpenDialog({ title: 'Choose business logo', properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] });
   if (canceled || !filePaths[0]) return '';
   const file = filePaths[0], ext = path.extname(file).toLowerCase();
   const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
   return `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`;
 });
 
-// ---- data load/save (atomic write, keeps previous copy) ----
+// ---- data load/save (atomic write, keeps the last valid copy) ----
+function validDatabase(data) {
+  return !!data && typeof data === 'object' && !Array.isArray(data) && !!data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings) && Array.isArray(data.products);
+}
+function preserveValidDatabase(file) {
+  if (!fs.existsSync(file)) return;
+  // A corrupt primary may be the reason db:load fell back to .prev. Never
+  // replace that recovery copy with the corrupt primary during the next save.
+  try {
+    const current = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!validDatabase(current)) return;
+  } catch (_) { return; }
+  const previous = `${file}.prev`;
+  const staged = `${previous}.tmp`;
+  try {
+    fs.copyFileSync(file, staged);
+    if (!validDatabase(JSON.parse(fs.readFileSync(staged, 'utf8')))) throw new Error('Previous database copy failed validation');
+    fs.renameSync(staged, previous);
+  } catch (e) {
+    try { fs.rmSync(staged, { force: true }); } catch (_) {}
+    throw e;
+  }
+}
+function writeDatabase(file, data) {
+  if (!validDatabase(data)) throw new Error('Refusing to save invalid database data');
+  const tmp = `${file}.tmp`;
+  const serialized = JSON.stringify(data);
+  const check = JSON.parse(serialized);
+  if (!validDatabase(check)) throw new Error('Database validation failed; existing data was preserved');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  try {
+    fs.writeFileSync(tmp, serialized);
+    preserveValidDatabase(file);
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    try { fs.rmSync(tmp, { force: true }); } catch (_) {}
+    throw e;
+  }
+}
 ipcMain.handle('auth:recover-password', (_event, recoveryKey, username, newPassword) => {
   if (app.isPackaged && !win?.webContents?.getURL().startsWith('file://')) return { ok: false, error: 'Password recovery is available only in the offline application' };
   const normalizedKey = String(recoveryKey || '').trim().toUpperCase();
@@ -647,10 +713,10 @@ ipcMain.handle('auth:recover-password', (_event, recoveryKey, username, newPassw
   const f = dataFile();
   // Match db:load recovery behavior: if the current profile file is missing or
   // damaged, accounts may still be available in the last atomic-write backup.
-  let data, sourceFile = f;
+  let data;
   try { data = JSON.parse(fs.readFileSync(f, 'utf8')); }
   catch (primaryError) {
-    try { data = JSON.parse(fs.readFileSync(f + '.prev', 'utf8')); sourceFile = f + '.prev'; }
+    try { data = JSON.parse(fs.readFileSync(f + '.prev', 'utf8')); }
     catch (previousError) {
       if (primaryError.code === 'ENOENT' && previousError.code === 'ENOENT') return { ok: false, error: 'No local account was found' };
       throw new Error('Local account data could not be read. No data was changed.');
@@ -660,43 +726,39 @@ ipcMain.handle('auth:recover-password', (_event, recoveryKey, username, newPassw
   const user = data.users.find(item => item && item.username === userName && item.active);
   if (!user) return { ok: false, error: 'Active username not found' };
   user.hash = crypto.createHash('sha256').update(user.username + ':' + password).digest('hex');
-  const tmp = f + '.tmp';
   try {
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    const serialized = JSON.stringify(data);
-    JSON.parse(serialized);
-    fs.writeFileSync(tmp, serialized);
-    if (fs.existsSync(f) && sourceFile === f) fs.copyFileSync(f, f + '.prev');
-    fs.renameSync(tmp, f);
+    // If recovery came from .prev, writeDatabase leaves that known-good copy
+    // intact while repairing the primary file.
+    writeDatabase(f, data);
   } catch (e) {
-    try { fs.rmSync(tmp, { force: true }); } catch (_) {}
+    try { fs.rmSync(f + '.tmp', { force: true }); } catch (_) {}
     throw new Error(`Password reset could not be saved. No data was changed. ${e.message}`);
   }
   return { ok: true };
 });
 ipcMain.handle('db:load', () => {
-  try { return JSON.parse(fs.readFileSync(dataFile(), 'utf8')); }
-  catch (e) {
-    if (e.code === 'ENOENT') return null;
-    try { return JSON.parse(fs.readFileSync(dataFile() + '.prev', 'utf8')); }
-    catch (previousError) {
-      // Do not let the renderer interpret a damaged existing database as a
-      // first launch: that would create a new file over the user's data.
-      throw new Error(`The local database could not be read. Original file: ${e.message}. Previous copy: ${previousError.message}. No data was changed.`);
-    }
-  }
+  const primary = dataFile();
+  let primaryError, previousError;
+  try {
+    const data = JSON.parse(fs.readFileSync(primary, 'utf8'));
+    if (!validDatabase(data)) throw new Error('The primary database has an invalid structure');
+    return data;
+  } catch (e) { primaryError = e; }
+  try {
+    const data = JSON.parse(fs.readFileSync(primary + '.prev', 'utf8'));
+    if (!validDatabase(data)) throw new Error('The previous database copy has an invalid structure');
+    console.warn('The primary shop database could not be opened; using the last valid recovery copy.');
+    try { writeDatabase(primary, data); }
+    catch (e) { console.error('Could not repair the primary shop database; the recovery copy remains available:', e.message); }
+    return data;
+  } catch (e) { previousError = e; }
+  if (primaryError.code === 'ENOENT' && previousError.code === 'ENOENT') return null;
+  // Do not let the renderer interpret a damaged existing database as a first
+  // launch: that would create a new file over the user's data.
+  throw new Error(`The local database could not be read. Original file: ${primaryError.message}. Previous copy: ${previousError.message}. No data was changed.`);
 });
 ipcMain.handle('db:save', (_e, data) => {
-  if (!data || typeof data !== 'object' || Array.isArray(data) || !data.settings || !Array.isArray(data.products)) throw new Error('Refusing to save invalid database data');
-  const f = dataFile(), tmp = f + '.tmp';
-  fs.mkdirSync(path.dirname(f), { recursive: true });
-  const serialized = JSON.stringify(data);
-  const check = JSON.parse(serialized);
-  if (!check || !check.settings || !Array.isArray(check.products)) throw new Error('Database validation failed; existing data was preserved');
-  fs.writeFileSync(tmp, serialized);
-  if (fs.existsSync(f)) fs.copyFileSync(f, f + '.prev');
-  try { fs.renameSync(tmp, f); }
-  catch (e) { fs.rmSync(tmp, { force: true }); throw e; }
+  writeDatabase(dataFile(), data);
   return true;
 });
 ipcMain.handle('db:path', () => dataFile());
@@ -705,13 +767,15 @@ ipcMain.handle('db:path', () => dataFile());
 // printer. If no printer is installed, generate a PDF and ask where to save it.
 ipcMain.handle('print:html', async (_event, job) => {
   if (!job || typeof job.body !== 'string' || typeof job.css !== 'string') throw new Error('Invalid print job');
+  const printOwner = win;
+  if (!printOwner || printOwner.isDestroyed() || printOwner.webContents.isDestroyed()) throw new Error('The POS window is closing. Reopen it and try printing again.');
   const mm = job.pageSizeMm;
   const customPageMm = mm && Number.isFinite(Number(mm.width)) && Number.isFinite(Number(mm.height)) && Number(mm.width) > 1 && Number(mm.height) > 1 && Number(mm.width) <= 2000 && Number(mm.height) <= 2000
     ? { width: Number(mm.width), height: Number(mm.height) }
     : null;
   const standardPaper = ['A3', 'A4', 'A5', 'Legal', 'Letter', 'Tabloid'].includes(job.paperSize) ? job.paperSize : null;
   const printPageSize = customPageMm ? { width: Math.round(customPageMm.width * 1000), height: Math.round(customPageMm.height * 1000) } : standardPaper;
-  const printers = await win.webContents.getPrintersAsync().catch(() => []);
+  const printers = await printOwner.webContents.getPrintersAsync().catch(() => []);
   const printWindow = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } });
   const title = String(job.title || 'Print').replace(/[<>]/g, '');
   let body = job.body;
@@ -733,7 +797,7 @@ ipcMain.handle('print:html', async (_event, job) => {
     if (customPageMm) pdfOptions.pageSize = { width: customPageMm.width / 25.4, height: customPageMm.height / 25.4 };
     else if (standardPaper) pdfOptions.pageSize = standardPaper;
     const pdf = await printWindow.webContents.printToPDF(pdfOptions);
-    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    const { canceled, filePath } = await showSaveDialog({
       title: 'Save print job as PDF', defaultPath: `${title || 'Print'}.pdf`, filters: [{ name: 'PDF document', extensions: ['pdf'] }]
     });
     if (canceled || !filePath) return { ok: false, cancelled: true };
@@ -777,7 +841,7 @@ function runBackup(kind) {
 }
 
 function tick() {
-  if (!cfg.on || running) return;
+  if (appIsQuitting || !cfg.on || running) return;
   const now = new Date(), [h, m] = /^(\d{2}):(\d{2})$/.test(cfg.time) ? cfg.time.split(':').map(Number) : [2, 0];
   const offset = cfg.frequency === 'weekly' ? (now.getDay() - Number(cfg.weekday) + 7) % 7 : 0;
   const scheduledDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
@@ -806,11 +870,11 @@ ipcMain.handle('backup:config', (_e, c) => {
 ipcMain.handle('backup:run', () => runBackup('manual'));
 ipcMain.handle('backup:list', () => ({ dir: backupDir(), log: readLog().slice(0, 30) }));
 ipcMain.handle('dialog:folder', async () => {
-  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
+  const r = await showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle('backup:restore', async () => {
-  const r = await dialog.showOpenDialog(win, {
+  const r = await showOpenDialog({
     defaultPath: fs.existsSync(backupDir()) ? backupDir() : undefined,
     filters: [{ name: 'Backup', extensions: ['json'] }], properties: ['openFile']
   });
@@ -836,5 +900,24 @@ app.whenReady().then(() => {
   setInterval(tick, 60000);
   setTimeout(tick, 4000);
 });
-app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+function focusMainWindow() {
+  if (appIsQuitting) return;
+  if (!win || win.isDestroyed()) { createWindow(); return; }
+  const mainWindow = win;
+  try {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+  } catch (e) {
+    // A window can be destroyed between the check and a native window call.
+    if (mainWindow.isDestroyed()) {
+      if (win === mainWindow) win = null;
+      if (!appIsQuitting) createWindow();
+      return;
+    }
+    console.error('Could not focus the POS window:', e.message);
+  }
+}
+app.on('second-instance', () => { app.whenReady().then(focusMainWindow).catch(e => console.error('Could not restore the POS window:', e.message)); });
+app.on('before-quit', () => { appIsQuitting = true; });
 app.on('window-all-closed', () => app.quit());
