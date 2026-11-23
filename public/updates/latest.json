@@ -1,6 +1,6 @@
 {
   "version": "1.4.3",
-  "notes": "Fixed the Windows relaunch crash and improved offline renderer and database recovery.",
+  "notes": "Fixed the Windows relaunch and offline data recovery issues. Windows Portable users: download the full package from https://github.com/zenstack0-beep/pos/releases/tag/v1.4.3, extract it to a new folder, and run The Smart POS.exe. Do not use Install and restart for portable copies. Installed Windows and Mac clients can use Install and restart.",
   "platforms": {
     "win32-x64": {
       "url": "https://github.com/zenstack0-beep/pos/releases/download/v1.4.3/The-Smart-POS-Setup-1.4.3.exe",
