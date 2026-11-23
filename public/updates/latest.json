@@ -1,73 +1,18 @@
 {
-  "version": "1.2.0",
-  "notes": "VAT and related POS updates. Download is available after the matching platform installer is published.",
-  "platforms": {},
-  "ui": {
-    "revision": "c9b3b42e6270",
-    "minShell": "1.4.2",
-    "notes": "Improvements and fixes.",
-    "builtAt": "2026-11-10T05:48:04.430Z",
-    "files": [
-      {
-        "path": "customer-display.html",
-        "sha256": "571a9cf1bc7790174ba47b344e794e90cbbf8929e38deaf719cb2a0b44332b92",
-        "size": 7770
-      },
-      {
-        "path": "index.html",
-        "sha256": "0c9527f968149afa3608c0a62a81523405e56a847bdbf6da3e46ec00e4858e43",
-        "size": 1419
-      },
-      {
-        "path": "js/app.js",
-        "sha256": "83be2ffb05c9f3fc93304cba5ba090da94d8199a382233d4c59853712cc5840e",
-        "size": 41273
-      },
-      {
-        "path": "js/core.js",
-        "sha256": "f6dbd3c59e5cf2be77cfd629b4946ea5e680af6e83ca193bf29f214db4e71770",
-        "size": 32817
-      },
-      {
-        "path": "js/diagnostics.js",
-        "sha256": "ffe468f8a74bea7d705c241ec88fb6fde119bd2ec7281bfb88a85daf10280740",
-        "size": 1491
-      },
-      {
-        "path": "js/pages.js",
-        "sha256": "cccdfcfbfbd01c145f6b5d497c6d26cfee30b55545ff5445f33007b194537e18",
-        "size": 54380
-      },
-      {
-        "path": "js/pages2.js",
-        "sha256": "6addf93b41e86684563cd940bc8414fbde3fd7cd05aa7ee75ffd91b53994153b",
-        "size": 120030
-      },
-      {
-        "path": "js/qfonts.js",
-        "sha256": "d34cad82c0ce78cdbf7e3cf89db254f14e5ae8cacb37c66732229a040fc162b2",
-        "size": 113126
-      },
-      {
-        "path": "js/theme-boot.js",
-        "sha256": "61961b37829c66a07a7af49d67b7336f52748fe0b557cd376b90ae72aa85166b",
-        "size": 706
-      },
-      {
-        "path": "js/updater-ui.js",
-        "sha256": "a2ec03d4cfcef00965198805c91e9a1bfbd86c8fd592b33e6c617dc4f2e65dd6",
-        "size": 8890
-      },
-      {
-        "path": "lib/html2pdf.bundle.min.js",
-        "sha256": "9563c45f032179c73454293a649929e60fc24c05a326e8ab2811cfa8f25c3607",
-        "size": 946030
-      },
-      {
-        "path": "style.css",
-        "sha256": "1a44c4e1fbf53cea522381eaac0f1aa9d99cbafeeac7761624a9b5613a3cec98",
-        "size": 16852
-      }
-    ]
+  "version": "1.4.3",
+  "notes": "Fixed the Windows relaunch crash and improved offline renderer and database recovery.",
+  "platforms": {
+    "win32-x64": {
+      "url": "https://github.com/zenstack0-beep/pos/releases/download/v1.4.3/The-Smart-POS-Setup-1.4.3.exe",
+      "sha256": "27478d2f107ce2496a2ff2d7f9df3600cb68672ff44d1bc4378a3bac46619e53"
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/zenstack0-beep/pos/releases/download/v1.4.3/The-Smart-POS-1.4.3-arm64.dmg",
+      "sha256": "474542a55cddc766ec8a70eb91964442b4612b81e0ce04f408d1ffb86a0dcefb"
+    },
+    "darwin-x64": {
+      "url": "https://github.com/zenstack0-beep/pos/releases/download/v1.4.3/The-Smart-POS-1.4.3-x64.dmg",
+      "sha256": "c0fa990b509099263a9d9b5be5df5ce2086efffff1c2f777c092884273fad6f2"
+    }
   }
 }
